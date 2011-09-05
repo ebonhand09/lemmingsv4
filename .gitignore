@@ -1,0 +1,5 @@
+bin/gfx/terrain/*.dat
+*.list
+*.swp
+
+
