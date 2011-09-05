@@ -1,15 +1,16 @@
 			INCLUDE	"defines.asm"		; Coco hardware definitions
 
+			SECTION	.program_code_physical_map ; $FFA6
+			FCB	$30
+			ENDSECTION
 
-			;** Some hand EQU's
-ProgramCode		EQU	$30
 
-			ORG	$FFA6			; Switch storage block - put our code at $C000
-			FCB	ProgramCode		; Start of program code in physical ram
-			ORG	$C000			; Physical block 'ProgramCode', Virtual Page 0
-
+			SECTION program_code
+ProgramCode		EXPORT
+ProgramCode		;** To be loaded at $C000
+			
 			orcc	#$50			; Disable interrupts (just in case)
-			lds	#STACK+255		; Relocate stack
+			lds	#Stack			; Relocate stack
 
 			lbsr	set_graphics_mode	; 256x192x16			
 	
@@ -27,10 +28,10 @@ ProgramCode		EQU	$30
 
 
 ENDLOOP			jmp	ENDLOOP
+			ENDSECTION
 
-			INCLUDE	"module-gfx.asm"
-
-STACK			rmb 	256
-
-			END	$C000
-
+			SECTION	.program_code_stack
+Stack			EXPORT
+			rmb 	255
+Stack			EQU	*
+			ENDSECTION

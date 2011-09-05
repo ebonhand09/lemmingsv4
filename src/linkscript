@@ -1,0 +1,8 @@
+
+section	.program_code_physical_map	load	FFA6
+section	program_code			load	C000
+
+section module_gfx
+section	.program_code_stack		load	FD00
+
+entry	ProgramCode
