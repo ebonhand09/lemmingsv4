@@ -215,7 +215,7 @@ Height				RMB	1
 LevelObjectStruct	STRUCT
 ID				RMB	1
 PosLeft				RMB	2
-PosTop				RMB	2
+PosTop				RMB	1
 DrawNotOverlap			RMB	1
 DrawOnTerrain			RMB	1
 DrawUpsideDown			RMB	1
@@ -223,7 +223,7 @@ DrawUpsideDown			RMB	1
 			
 LevelTerrainStruct	STRUCT
 ID				RMB	1
-PosLeft				RMB	1
+PosLeft				RMB	2
 PosTop				RMB	1
 DrawNotOverlap			RMB	1
 DrawBlack			RMB	1
@@ -236,3 +236,6 @@ PosTop				RMB	2
 PosRight			RMB	2
 PosBottom			RMB	2
 			ENDSTRUCT
+
+Block_TerrainData		EQU	$0F
+Page_TerrainData		EQU	$FFA3

@@ -12,6 +12,9 @@ section	.program_code_physical_map		load	FFA6
 section	program_code				load	C000	; $30
 
 section module_gfx
+section module_drawterrain
+section .bss
+
 section	.program_code_stack			load	FD00
 
 entry	ProgramCode

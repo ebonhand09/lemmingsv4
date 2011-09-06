@@ -4,6 +4,9 @@
 			FCB	$30
 			ENDSECTION
 
+			SECTION .bss,bss
+_main_chunk_counter	RMB	2
+			ENDSECTION
 
 			SECTION program_code
 ProgramCode		EXPORT
@@ -18,14 +21,44 @@ ProgramCode		;** To be loaded at $C000
 			lbsr	clear_virtual_screen	; Go clear some ram
 			;** By reaching here, pages 0 through 0E should be cleared
 
-			lda	#159			; Set vertical row to be found
 
-			;** Establish which vsbank needs to be mapped to the vswindow
-			lbsr	get_addr_start_of_line	; map, and D = offset
+			;** Get LevelData into ram
+			lda	#$12			; LevelData
+			sta	GIME.MMU0+4		; $8000
 
-			ldx	#767			; Set horizontal column
-			leau	d,x			; This should set U to point at X,D
+			ldy	#LevelData		; y = start of level
+			ldx	LevelStruct.TotalTerrain,y ; x now holds the count
+			stx	_main_chunk_counter	; keep it
+			leay	sizeof{LevelStruct},y	; y should now point to first levelchunk
+_next_level_chunk	
+			pshs	y			; keep struct for later
+			lda	LevelTerrainStruct.PosTop,y	; vertical loc
+			ldx	LevelTerrainStruct.PosLeft,y	; horizontal loc
+			ldb	LevelTerrainStruct.DrawNotOverlap,y ; draw mode
+			;clrb
+			pshs	d
+			clra
+			ldb	LevelTerrainStruct.ID,y	; y now = id
+			tfr	d,y
+			puls	d
+			lbsr	draw_terrain_chunk
+			puls	y			; y = chunk just drawn
+			leay	sizeof{LevelTerrainStruct},y ; move to next chunk
+			ldx	_main_chunk_counter	; get and dec counter
+			leax	-1,x
+			stx	_main_chunk_counter
+			cmpx	#0
+			bne	_next_level_chunk
 
+
+			ldx	#0			; offset to view
+
+!			pshs	x
+			lbsr	copy_virt_to_phys	; render it to gfx
+			puls	x
+			leax	4,x
+			cmpx	#640
+			blo	<
 
 
 ENDLOOP			jmp	ENDLOOP

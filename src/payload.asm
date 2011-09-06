@@ -21,6 +21,6 @@ LevelData			INCLUDEBIN	"../bin/lvl/0001.lvl"
 				ENDSECTION
 
 				SECTION	.payload_terrain_offset		; ORG $A000
-TerrainOffsetData		EXPORT
-TerrainOffsetData		INCLUDE		"terrain-offset-table.asm"
+TerrainOffsetTable		EXPORT
+TerrainOffsetTable		INCLUDE		"terrain-offset-table.asm"
 				ENDSECTION

@@ -2,12 +2,51 @@
 
 			INCLUDE	"defines.asm"		; Coco hardware definitions
 
+			SECTION .bss,bss
+_cvtp_x_offset		RMB	2
+_cvtp_y_counter		RMB	1
+
+			ENDSECTION
+
 			SECTION	module_gfx
 clear_virtual_screen	EXPORT
 map_virtual_screen	EXPORT
 get_addr_start_of_line	EXPORT
 set_graphics_mode	EXPORT
 set_palette		EXPORT
+copy_virt_to_phys	EXPORT
+
+;** copy_virt_to_phys
+;	copy video data from the virtual screen to the physical screen
+;	physical screen is 128 bytes wide, 160 bytes high
+; ENTRY: X = horizontal offset (0 to 639) - TRUSTED, this should be pre-clamped
+
+copy_virt_to_phys
+			stx	_cvtp_x_offset		; keep horizontal offset for later
+			clr	_cvtp_y_counter		; reset the line counter to zero
+			lda	#$13			; first page of physical video
+			sta	GIME.MMU0+3		; $6000
+			ldu	#$6000			; u = first byte of physical screen
+			clra
+@_cvtp_0
+			lbsr	get_addr_start_of_line	; map and get first byte
+			ldx	_cvtp_x_offset		; get horizontal offset
+			leax	d,x			; x = first byte to copy
+			lda	#128			; a = number of bytes to copy
+!			ldb	,x+			; get byte to draw
+			stb	,u+			; write byte
+			deca				; decrease number of bytes left
+			bne	<
+			cmpu	#$8000
+			bne	@_cvtp_skip_adjust_u	; if it doesn't need adjusting, don't
+			ldu	#$6000			; put u back to start of video
+			inc	GIME.MMU0+3		; point at next physical memory area
+@_cvtp_skip_adjust_u	
+			inc	_cvtp_y_counter		; inc number of lines drawn
+			lda	_cvtp_y_counter		; get line to be copied
+			cmpa	#160			; have we copied 160 lines yet?
+			bne	@_cvtp_0		; if not, go again
+			rts
 
 ;** clear_virtual_screen
 ;	Set physical memory pages 0 through 0E to zero
@@ -95,8 +134,9 @@ set_graphics_mode
 			lda	#GIME_LPF192|GIME_BPR128|GIME_BPP4
 			sta	GIME.VRES		; Set video resolution
 
-			;clr	GIME.VOFFSET
 			; Upper 16 bits of 19-bit starting address
+			;clr	GIME.VOFFSET		; For viewing the virtual screen
+							; For viewing the physical screen
 			lda	#$4C			; $4C00 = page $13
 			sta	GIME.VOFFSET		; = 26000
 			clr	GIME.VOFFSET+1

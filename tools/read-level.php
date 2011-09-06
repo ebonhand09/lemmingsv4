@@ -289,7 +289,7 @@
 	foreach($level->terrainArray as $key => $val)
 	{
 		writeData($val->id);
-		writeData($val->x_offset);
+		writeData($val->x_offset,2);
 		writeData($val->y_offset);
 		writeData($val->notOverlap);
 		writeData($val->black);
