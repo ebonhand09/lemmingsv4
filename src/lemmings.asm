@@ -12,7 +12,8 @@ ProgramCode		;** To be loaded at $C000
 			orcc	#$50			; Disable interrupts (just in case)
 			lds	#Stack			; Relocate stack
 
-			lbsr	set_graphics_mode	; 256x192x16			
+			lbsr	set_graphics_mode	; 256x192x16
+			lbsr	set_palette		; specified in module-gfx
 	
 			lbsr	clear_virtual_screen	; Go clear some ram
 			;** By reaching here, pages 0 through 0E should be cleared

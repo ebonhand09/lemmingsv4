@@ -166,3 +166,73 @@ GIME_BPR160	equ 0x1C	;160 bytes per row
 GIME_BPP1	equ 0x00	;1 bit per pixel
 GIME_BPP2	equ 0x01	;2 bits per pixel
 GIME_BPP4	equ 0x02	;4 bits per pixel
+
+LevelStruct		STRUCT
+Title				RMB	32
+LemsToLetOut			RMB	1
+LemsToBeSaved			RMB	1
+ReleaseRate			RMB	1
+PlayingTime			RMB	1
+MaxClimbers			RMB	1
+MaxFloaters			RMB	1
+MaxBombers			RMB	1
+MaxBlockers			RMB	1
+MaxBuilders			RMB	1
+MaxBashers			RMB	1
+MaxMiners			RMB	1
+MaxDiggers			RMB	1
+ScreenStart			RMB	1
+GraphicSet			RMB	1
+GraphicSetEx			RMB	1
+TotalObjects			RMB	2
+TotalTerrain			RMB	2
+TotalSteel			RMB	2
+			ENDSTRUCT
+			
+ObjectStruct		STRUCT
+DataPointer			RMB	2
+DataLength			RMB	2
+DataFrames			RMB	1
+Width				RMB	1
+Height				RMB	1
+FrameStart			RMB	1
+FrameEnd			RMB	1
+TriggerLeft			RMB	1
+TriggerTop			RMB	1
+TriggerWidth			RMB	1
+TriggerHeight			RMB	1
+TriggerEffect			RMB	1
+SoundEffect			RMB	1
+SoundFrame			RMB	1
+			ENDSTRUCT
+			
+TerrainStruct		STRUCT
+DataPointer			RMB	2
+Width				RMB	1
+Height				RMB	1
+			ENDSTRUCT
+
+LevelObjectStruct	STRUCT
+ID				RMB	1
+PosLeft				RMB	2
+PosTop				RMB	2
+DrawNotOverlap			RMB	1
+DrawOnTerrain			RMB	1
+DrawUpsideDown			RMB	1
+			ENDSTRUCT
+			
+LevelTerrainStruct	STRUCT
+ID				RMB	1
+PosLeft				RMB	1
+PosTop				RMB	1
+DrawNotOverlap			RMB	1
+DrawBlack			RMB	1
+DrawUpsideDown			RMB	1			
+			ENDSTRUCT
+			
+LevelSteelStruct	STRUCT
+PosLeft				RMB	2
+PosTop				RMB	2
+PosRight			RMB	2
+PosBottom			RMB	2
+			ENDSTRUCT

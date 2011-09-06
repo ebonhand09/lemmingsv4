@@ -7,8 +7,9 @@ clear_virtual_screen	EXPORT
 map_virtual_screen	EXPORT
 get_addr_start_of_line	EXPORT
 set_graphics_mode	EXPORT
+set_palette		EXPORT
+
 ;** clear_virtual_screen
-;
 ;	Set physical memory pages 0 through 0E to zero
 ;	through virtual window. Return virtual window
 ;	to previous setting upon exit.
@@ -94,10 +95,44 @@ set_graphics_mode
 			lda	#GIME_LPF192|GIME_BPR128|GIME_BPP4
 			sta	GIME.VRES		; Set video resolution
 
-			clr	GIME.HOFFSET
-			clr	GIME.VOFFSET
+			;clr	GIME.VOFFSET
+			; Upper 16 bits of 19-bit starting address
+			lda	#$4C			; $4C00 = page $13
+			sta	GIME.VOFFSET		; = 26000
 			clr	GIME.VOFFSET+1
 			clr	GIME.VSCROLL
+			clr	GIME.HOFFSET
 			rts
+
+;*** SetPalette: Configure the palette for the appropriate level. Hard-coded to Grass/0 for now
+set_palette
+			ldx	#GIME.PALETTE				; set some palette entries
+			ldy	#_palette_data
+			ldb	#0
+!       	        lda     ,Y+
+			sta	,X+
+			incb
+			cmpb    #15
+			bne	<
+			
+			rts
+                                
+_palette_data
+			FCB	%00000000	; 0000	- Black
+			FCB	%00011000	; 0001	- Hair	(Light blue)
+			FCB	%00111100	; 0010	- Skin	(Pink)
+			FCB	%00001111	; 0011	- Robe	(Blue)
+			FCB	%00000100	; 0100	- V.Dark Red
+			FCB	%00100000	; 0101	- Red
+			FCB	%00100010	; 0110	- Brown
+			FCB	%00110101	; 0111	- Fugorange
+			FCB	%00000010	; 1000	- Dark Green
+			FCB	%00010100	; 1001	- Light Green
+			FCB	%00000111	; 1010	- Grey
+			FCB	%00101010	; 1011	- Purple
+			FCB	%00000000	; 1100	- Unspecified
+			FCB	%00000000	; 1101	- Unspecified
+			FCB	%00000000	; 1110	- Unspecified
+			FCB	%00000000	; 1111	- Unspecified / System
 
 			ENDSECTION

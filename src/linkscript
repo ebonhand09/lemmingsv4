@@ -1,8 +1,17 @@
+section	.payload_terrain_physical_map		load	FFA3
+section	.payload_terrain			load	6000	; $0F,$10,$11
 
-section	.program_code_physical_map	load	FFA6
-section	program_code			load	C000
+section	.payload_level_physical_map		load	FFA4
+section	.payload_level				load	8000	; $12
+
+
+section .payload_terrain_offset_physical_map	load	FFA5
+section	.payload_terrain_offset			load	A000	; $16
+
+section	.program_code_physical_map		load	FFA6
+section	program_code				load	C000	; $30
 
 section module_gfx
-section	.program_code_stack		load	FD00
+section	.program_code_stack			load	FD00
 
 entry	ProgramCode
