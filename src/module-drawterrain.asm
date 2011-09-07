@@ -33,8 +33,8 @@ draw_terrain_chunk
 			stb	_ter_drw_mode		; save untouched original
 			clr	_ter_height_adjust	; start off with zero
 			clr	_ter_drw_nooverlap	; start off with normal mode
-			lda	#$0F
-			sta	$FFA3
+			lda	#Block_TerrainData
+			sta	Page_TerrainData
 			lda	_ter_drw_y_loc
 			andb	#1
 			beq	_dtc_skip_nooverlap_store
@@ -80,12 +80,12 @@ _dtc_skip_negative_adjustment
 _dtc_skip_height_adjust
 
 			;** adjust u
-			cmpu	#$8000
+			cmpu	#Window_TerrainData+$2000
 			blo	_dtc_skip_adjust_src0
 			tfr	u,d
 			suba	#$20
 			tfr	d,u
-			inc	$FFA3
+			inc	Page_TerrainData
 			bra	_dtc_skip_height_adjust	; go again
 _dtc_skip_adjust_src0
 			;** Point X at destination (virtual screen)
@@ -136,12 +136,12 @@ _dtc_done_writing	dec	_ter_drw_counter ; dec number of bytes left to write
 			bne	_dtc_line_loop	; more to write? go back
 			inc	_ter_drw_y_loc	; next line
 			;** adjust u
-_dtc_adjust_u		cmpu	#$8000
+_dtc_adjust_u		cmpu	#Window_TerrainData+$2000
 			blo	_dtc_skip_adjust_src
 			tfr	u,d
 			suba	#$20
 			tfr	d,u
-			inc	$FFA3
+			inc	Page_TerrainData
 			bra	_dtc_adjust_u
 _dtc_skip_adjust_src
 			dec	_ter_drw_lines_left ; more lines to go?

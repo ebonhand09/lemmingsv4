@@ -1,8 +1,8 @@
 section	.payload_terrain_physical_map		load	FFA3
-section	.payload_terrain			load	6000	; $0F,$10,$11
+section	.payload_terrain			load	6000	; $16,$17,$18
 
 section	.payload_level_physical_map		load	FFA4
-section	.payload_level				load	8000	; $12
+section	.payload_level				load	8000	; $15
 
 
 section .payload_terrain_offset_physical_map	load	FFA5

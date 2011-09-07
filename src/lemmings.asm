@@ -1,7 +1,7 @@
 			INCLUDE	"defines.asm"		; Coco hardware definitions
 
 			SECTION	.program_code_physical_map ; $FFA6
-			FCB	$30
+			FCB	Block_ProgramCode
 			ENDSECTION
 
 			SECTION .bss,bss
@@ -23,8 +23,8 @@ ProgramCode		;** To be loaded at $C000
 
 
 			;** Get LevelData into ram
-			lda	#$12			; LevelData
-			sta	GIME.MMU0+4		; $8000
+			lda	#Block_LevelData	; LevelData
+			sta	Page_LevelData		; $8000
 
 			ldy	#LevelData		; y = start of level
 			ldx	LevelStruct.TotalTerrain,y ; x now holds the count

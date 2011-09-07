@@ -237,5 +237,31 @@ PosRight			RMB	2
 PosBottom			RMB	2
 			ENDSTRUCT
 
-Block_TerrainData		EQU	$0F
+Block_VirtualScreen		EQU	$0
+Page_VirtualScreen		EQU	$FFA0
+Window_VirtualScreen		EQU	$0
+
+Block_ScreenBuffer_0		EQU	$0F
+Phys_ScreenBuffer_0		EQU	$3C
+Block_ScreenBuffer_1		EQU	$12
+Phys_ScreenBuffer_1		EQU	$48
+Page_ScreenBuffer		EQU	$FFA3
+Window_ScreenBuffer		EQU	$6000
+
+Block_LevelData			EQU	$15
+Page_LevelData			EQU	$FFA4
+Window_LevelData		EQU	$8000
+
+Block_TerrainData		EQU	$16
 Page_TerrainData		EQU	$FFA3
+Window_TerrainData		EQU	$6000
+
+Block_TerrainOffset		EQU	$19
+Page_TerrainOffset		EQU	$FFA5
+Window_TerrainOffset		EQU	$A000
+
+Block_ProgramCode		EQU	$30
+Page_ProgramCode		EQU	$FFA6
+Window_ProgramCode		EQU	$C000
+
+

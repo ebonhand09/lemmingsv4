@@ -24,9 +24,9 @@ copy_virt_to_phys	EXPORT
 copy_virt_to_phys
 			stx	_cvtp_x_offset		; keep horizontal offset for later
 			clr	_cvtp_y_counter		; reset the line counter to zero
-			lda	#$13			; first page of physical video
-			sta	GIME.MMU0+3		; $6000
-			ldu	#$6000			; u = first byte of physical screen
+			lda	#Block_ScreenBuffer_0	; first page of physical video
+			sta	Page_ScreenBuffer	; $6000
+			ldu	#Window_ScreenBuffer	; u = first byte of physical screen
 			clra
 @_cvtp_0
 			lbsr	get_addr_start_of_line	; map and get first byte
@@ -37,10 +37,10 @@ copy_virt_to_phys
 			stb	,u+			; write byte
 			deca				; decrease number of bytes left
 			bne	<
-			cmpu	#$8000
+			cmpu	#Window_ScreenBuffer+$2000
 			bne	@_cvtp_skip_adjust_u	; if it doesn't need adjusting, don't
-			ldu	#$6000			; put u back to start of video
-			inc	GIME.MMU0+3		; point at next physical memory area
+			ldu	#Window_ScreenBuffer	; put u back to start of video
+			inc	Page_ScreenBuffer	; point at next physical memory area
 @_cvtp_skip_adjust_u	
 			inc	_cvtp_y_counter		; inc number of lines drawn
 			lda	_cvtp_y_counter		; get line to be copied
@@ -137,8 +137,8 @@ set_graphics_mode
 			; Upper 16 bits of 19-bit starting address
 			;clr	GIME.VOFFSET		; For viewing the virtual screen
 							; For viewing the physical screen
-			lda	#$4C			; $4C00 = page $13
-			sta	GIME.VOFFSET		; = 26000
+			lda	#Phys_ScreenBuffer_0	; $3C00 = page $0F
+			sta	GIME.VOFFSET		; 
 			clr	GIME.VOFFSET+1
 			clr	GIME.VSCROLL
 			clr	GIME.HOFFSET
