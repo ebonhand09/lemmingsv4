@@ -1,0 +1,31 @@
+set view = 1
+set draw = 2
+
+
+fill both buffers with terrain, set both buffer's (current_buffer_horizontal_value) to starting location horizontal_value
+
+the loop
+	iterate each object:
+		foreach
+			storing info required to erase just-drawn sprite
+			check what it's doing
+			move it, transform it, animate it as required
+		next
+		
+	check keypresses
+	
+	if scroll, set target-horizontal-value
+	
+	if current_buffer_horizontal-value != target-horizontal-value: (we're scrolling!)
+		(disable int)
+		gosub do_scroll (which updates the current_buffer_horizontal-value
+		gosub draw_sprites
+		(enable int)
+	else
+		gosub erase_old_sprites
+		gosub draw_sprites
+	endif
+	
+	wait for interrupt, which will toggle viewbuff and drawbuff
+goto loop
+
