@@ -2,10 +2,38 @@
 
 			INCLUDE	"defines.asm"		; Coco hardware definitions
 
+Blast8Bits		MACRO
+			pulu cc,a,b,dp,x,y
+			pshs cc,a,b,dp,x,y
+			leas 16,s
+			ENDM
+BlastLine		MACRO
+			Blast8Bits
+			Blast8Bits
+			Blast8Bits
+			Blast8Bits
+			Blast8Bits
+			Blast8Bits
+			Blast8Bits
+			Blast8Bits
+			Blast8Bits
+			Blast8Bits
+			Blast8Bits
+			Blast8Bits
+			Blast8Bits
+			Blast8Bits
+			Blast8Bits
+			Blast8Bits
+			ENDM
+
+
+
 			SECTION .bss,bss
 _cvtp_x_offset		RMB	2
 _cvtp_y_counter		RMB	1
-
+_cvtp_stack_pointer	RMB	2
+_gasol_stack_pointer	RMB	2
+_gasol_stack		RMB	16
 			ENDSECTION
 
 			SECTION	module_gfx
@@ -21,31 +49,45 @@ copy_virt_to_phys	EXPORT
 ;	physical screen is 128 bytes wide, 160 bytes high
 ; ENTRY: X = horizontal offset (0 to 639) - TRUSTED, this should be pre-clamped
 
+; disable ints on PIA/GIME, start U at src, S at dest+8, then pulu cc,a,b,dp,x,y; pshs cc,a,b,dp,x,y; leas 16,s
+; so 31 cycles per 8 bytes plus any counting etc.
 copy_virt_to_phys
-			stx	_cvtp_x_offset		; keep horizontal offset for later
-			clr	_cvtp_y_counter		; reset the line counter to zero
-			lda	#Block_ScreenBuffer_0	; first page of physical video
-			sta	Page_ScreenBuffer	; $6000
-			ldu	#Window_ScreenBuffer	; u = first byte of physical screen
+			pshs	cc,a,b,dp,x,y,u
+			;* disable ints
+			lda	#$4C
+			sta	GIME.INIT0
+			;* prepare video
+			sts	_cvtp_stack_pointer	;
+			stx	_cvtp_x_offset
+			clr	_cvtp_y_counter
+			;lda	#Block_ScreenBuffer_0
+			lda	_cur_vid_draw_block
+			sta	Page_ScreenBuffer
+			;lda	#Block_ScreenBuffer_0+1
+			inca
+			sta	Page_ScreenBuffer+1
+			;lda	#Block_ScreenBuffer_0+2
+			inca
+			sta	Page_ScreenBuffer+2
 			clra
+			lds	#Window_ScreenBuffer+8
 @_cvtp_0
-			lbsr	get_addr_start_of_line	; map and get first byte
-			ldx	_cvtp_x_offset		; get horizontal offset
-			leax	d,x			; x = first byte to copy
-			lda	#128			; a = number of bytes to copy
-!			ldb	,x+			; get byte to draw
-			stb	,u+			; write byte
-			deca				; decrease number of bytes left
-			bne	<
-			cmpu	#Window_ScreenBuffer+$2000
-			bne	@_cvtp_skip_adjust_u	; if it doesn't need adjusting, don't
-			ldu	#Window_ScreenBuffer	; put u back to start of video
-			inc	Page_ScreenBuffer	; point at next physical memory area
-@_cvtp_skip_adjust_u	
-			inc	_cvtp_y_counter		; inc number of lines drawn
-			lda	_cvtp_y_counter		; get line to be copied
-			cmpa	#160			; have we copied 160 lines yet?
-			bne	@_cvtp_0		; if not, go again
+			sts	_gasol_stack_pointer
+			lds	#_gasol_stack+16
+			lbsr	get_addr_start_of_line	; map first byte
+			lds	_gasol_stack_pointer
+			ldx	_cvtp_x_offset
+			leau	d,x
+			BlastLine
+			inc	_cvtp_y_counter
+			lda	_cvtp_y_counter
+			cmpa	#160
+			lbne	@_cvtp_0
+			lda	GIME.IRQ
+			lda	#$6C
+			sta	GIME.INIT0
+			lds	_cvtp_stack_pointer
+			puls	cc,a,b,dp,x,y,u
 			rts
 
 ;** clear_virtual_screen
@@ -137,7 +179,8 @@ set_graphics_mode
 			; Upper 16 bits of 19-bit starting address
 			;clr	GIME.VOFFSET		; For viewing the virtual screen
 							; For viewing the physical screen
-			lda	#Phys_ScreenBuffer_0	; $3C00 = page $0F
+			;lda	#Phys_ScreenBuffer_0	; $3C00 = page $0F
+			lda	_cur_vid_show_loc
 			sta	GIME.VOFFSET		; 
 			clr	GIME.VOFFSET+1
 			clr	GIME.VSCROLL

@@ -7,7 +7,7 @@ LWLINK=lwlink
 all: lemmings.dsk
 
 # define all source files here
-lemmings_srcs := lemmings.asm module-gfx.asm module-drawterrain.asm payload.asm
+lemmings_srcs := lemmings.asm module-gfx.asm module-drawterrain.asm module-interrupt.asm payload.asm
 
 extra_srcs := loader_stage1.asm loader_stage2.asm
 

@@ -6,6 +6,14 @@
 
 			SECTION .bss,bss
 _main_chunk_counter	RMB	2
+_cur_vid_draw_block	EXPORT
+_alt_vid_draw_block	EXPORT
+_cur_vid_show_loc	EXPORT
+_alt_vid_show_loc	EXPORT
+_cur_vid_draw_block	RMB	1
+_alt_vid_draw_block	RMB	1
+_cur_vid_show_loc	RMB	2
+_alt_vid_show_loc	RMB	2
 			ENDSECTION
 
 			SECTION program_code
@@ -14,6 +22,19 @@ ProgramCode		;** To be loaded at $C000
 			
 			orcc	#$50			; Disable interrupts (just in case)
 			lds	#Stack			; Relocate stack
+
+			
+			lda	#Block_ScreenBuffer_0	; block number for buffer 0
+			sta	_cur_vid_draw_block
+
+			lda	#Block_ScreenBuffer_1
+			sta	_alt_vid_draw_block
+
+			lda	#Phys_ScreenBuffer_0	; Physical show loc for buffer 0
+			sta	_alt_vid_show_loc
+
+			lda	#Phys_ScreenBuffer_1
+			sta	_cur_vid_show_loc
 
 			lbsr	set_graphics_mode	; 256x192x16
 			lbsr	set_palette		; specified in module-gfx
@@ -50,15 +71,18 @@ _next_level_chunk
 			cmpx	#0
 			bne	_next_level_chunk
 
+			lbsr	setup_interrupts	; Get things organised
 
 			ldx	#0			; offset to view
 
-!			pshs	x
+@_do_loop
+			cwai	#$EF	
+			pshs	x
 			lbsr	copy_virt_to_phys	; render it to gfx
 			puls	x
 			leax	4,x
 			cmpx	#640
-			blo	<
+			blo	@_do_loop
 
 
 ENDLOOP			jmp	ENDLOOP
