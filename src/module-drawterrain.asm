@@ -95,6 +95,7 @@ _dtc_new_row		lda	_ter_drw_y_loc	; get y offset to draw at
 			rts
 _dtc_continue		lbsr	get_addr_start_of_line ; convert a into d and remap
 			ldx	_ter_drw_x_loc	; get x offset
+			exg	x,d		; maybe fix offset thingy?
 			leax	d,x		; add vert and horizontal offsets
 			; X now points to dest, U to src
 

@@ -80,10 +80,18 @@ _next_level_chunk
 			pshs	x
 			lbsr	copy_virt_to_phys	; render it to gfx
 			puls	x
-			leax	4,x
+			leax	2,x
 			cmpx	#640
 			blo	@_do_loop
-
+@_do_other_loop
+			cwai	#$EF	
+			pshs	x
+			lbsr	copy_virt_to_phys	; render it to gfx
+			puls	x
+			leax	-2,x
+			cmpx	#0
+			bhi	@_do_other_loop
+			jmp	@_do_loop
 
 ENDLOOP			jmp	ENDLOOP
 			ENDSECTION

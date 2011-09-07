@@ -56,17 +56,12 @@
     
     function setXOffset($xoff)
     {
-    	if ($xoff > 32677)
-    	{
-    		$xoff = 32767 - $xoff;
-    	}
-    	//$this->x_offset = floor($xoff / 2);
-    	$this->x_offset = $xoff;
+    	$this->x_offset = floor($xoff / 2);
     }
     
     function adjustXOffset($adjust)
     {
-    	$this->x_offset = $this->x_offset - $adjust;
+    	//$this->x_offset = $this->x_offset - $adjust;
     	if ($this->x_offset < 0)
     	{
     		die(sprintf("tTerrainPiece %s X Offset error. Adjusted to %s by value %s\n", $this->id, $this->x_offset, $adjust));
@@ -75,6 +70,7 @@
     
     function setYOffset($yoff)
     {
+    	$yoff = $yoff % 256;
     	$this->y_offset = $yoff;
     }
     
@@ -125,14 +121,40 @@
     return fread($handle, $bytes);  
   }
   
+  function writeData($data, $bytes = 1, $handle = NULL)
+  {
+  	global $out_file;
+  	if ($handle === NULL) $handle = $out_file;
+  	
+  	if ($bytes == 1)
+  	{
+  		fwrite($handle, chr($data % 256), 1);
+  	}
+  	elseif ($bytes == 2)
+  	{
+  		fwrite($handle, chr(($data & 255) / 256), 1);
+  		fwrite($handle, chr(($data % 256)),1);
+  	}
+  }
+  
+  function writeString($data, $bytes, $handle = NULL)
+  {
+  	global $out_file;
+  	if ($handle === NULL) $handle = $out_file;
+  	
+  	fwrite($handle, $data, $bytes);
+  }
+  
   if ($argc < 2)
   {
-    echo "No filename specified" . PHP_EOL;
+    echo "No filenames specified" . PHP_EOL;
+    echo "Usage: examine-level.php xxxx.dat" . PHP_EOL;
     exit;
   }
 
   // open file
   $level_file = fopen($argv[1], 'r');
+  //$out_file = fopen($argv[2], 'wb');
   
   $level = new LevelData();
 
@@ -193,7 +215,6 @@
   echo "Stats" . PHP_EOL;
   echo "-----" . PHP_EOL;
   echo "Level name: " . $level->title . PHP_EOL;
-  echo "Graphic set: " . $level->graphicSet . PHP_EOL;
   echo "Total Objects: " . $level->totalObjects . PHP_EOL;
   echo "Total Terrain: " . $level->totalTerrain . PHP_EOL;
   echo "Total Steel: " . $level->totalSteel . PHP_EOL;
@@ -205,19 +226,11 @@
 
   $min_x = 99999;
   $max_x = 0;
-  $min_y = 99999;
-  $max_y = 0;
 
   for ($i = 0; $i < $level->totalTerrain; $i++)
   {
     $min_x = min($min_x, $level->terrainArray[$i]->x_offset);
     $max_x = max($max_x, $level->terrainArray[$i]->x_offset);
-    
-    
-    $y = $level->terrainArray[$i]->y_offset;
-    if ($y > 512) $y = 0;
-    $min_y = min($min_y, $y);
-    $max_y = max($max_y, $y);
   }
 
   foreach ($level->terrainArray as $key => $val)
@@ -226,34 +239,59 @@
     {
       echo "Right-most piece found: id " . $val->id . PHP_EOL;
     }
-    
-    if ($val->y_offset == $max_y)
-    {
-      echo "Lower-most piece found: id " . $val->id . PHP_EOL;
-    }
   }
 
   echo "Smallest Terrain X Value: " . $min_x . PHP_EOL;
   echo "Largest Terrain X Value: " . $max_x . PHP_EOL;
-  echo "Smallest Terrain Y Value: " . $min_y . PHP_EOL;
-  echo "Largest Terrain Y Value: " . $max_y . PHP_EOL;
-  echo "Total width (unadjusted, not including right-most piece): " . $max_x . PHP_EOL;
   echo "Total width (not including width of right-most terrain piece): " . ($max_x - $min_x) . PHP_EOL;
-  echo "Total height (not including height of bottom-most terrain piece): " . ($max_y - $min_y) . PHP_EOL;
   
-  foreach ($level->terrainArray as $key => $val)
+  //echo "Adjusting X offsets based upon smallest terrain X Value..." . PHP_EOL;
+  
+ /* foreach ($level->terrainArray as $key => $val)
   {
   	$level->terrainArray[$key]->adjustXOffset($min_x);
   }
-
+*/
   foreach ($level->terrainArray as $terrain)
   {
-    if ($terrain->x_offset > 600)
-    {
-      echo "Terrain piece id {$terrain->id} is at " . ($terrain->x_offset) . ", {$terrain->y_offset}. NotOverlap: {$terrain->notOverlap}, Black: {$terrain->black}, UpsideDown: {$terrain->upsideDown}" . PHP_EOL;
-    }
+      echo "id {$terrain->id}, ({$terrain->x_offset},{$terrain->y_offset}). NotOverlap: {$terrain->notOverlap}, Black: {$terrain->black}, UpsideDown: {$terrain->upsideDown}" . PHP_EOL;
   }
+/* 
+	// WRITE OUT LEVEL
+	writeString($level->title, 32);
+	writeData($level->lemsToLetOut);
+	writeData($level->lemsToBeSaved);
+	writeData($level->releaseRate);
+	writeData($level->playingTime);
+	writeData($level->maxClimbers);
+	writeData($level->maxFloaters);
+	writeData($level->maxBombers);
+	writeData($level->maxBlockers);
+	writeData($level->maxBuilders);
+	writeData($level->maxBashers);
+	writeData($level->maxMiners);
+	writeData($level->maxDiggers);
+	writeData($level->screenStart, 2);
+	writeData($level->graphicSet);
+	writeData($level->graphicSetExtension);
+	//writeData($level->totalObjects);
+	writeData(0,2); // hack - will fix when there's actually objects in the game
+	writeData($level->totalTerrain);
+	//writeData($level->totalSteel);
+	writeData(0,2); // hack - will fix when there's actually steel in the game
+	
+	// WRITE OUT TERRAIN
+	foreach($level->terrainArray as $key => $val)
+	{
+		writeData($val->id);
+		writeData($val->x_offset,2);
+		writeData($val->y_offset);
+		writeData($val->notOverlap);
+		writeData($val->black);
+		writeData($val->upsideDown);
+	}
 
- 
+*/	
+	//fclose($out_file);
 
   

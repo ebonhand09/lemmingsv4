@@ -61,7 +61,7 @@
     
     function adjustXOffset($adjust)
     {
-    	$this->x_offset = $this->x_offset - $adjust;
+    	//$this->x_offset = $this->x_offset - $adjust;
     	if ($this->x_offset < 0)
     	{
     		die(sprintf("tTerrainPiece %s X Offset error. Adjusted to %s by value %s\n", $this->id, $this->x_offset, $adjust));
@@ -132,7 +132,7 @@
   	}
   	elseif ($bytes == 2)
   	{
-  		fwrite($handle, chr(($data & 255) / 256), 1);
+  		fwrite($handle, chr(($data & 65280) / 256), 1);
   		fwrite($handle, chr(($data % 256)),1);
   	}
   }
@@ -245,7 +245,7 @@
   echo "Largest Terrain X Value: " . $max_x . PHP_EOL;
   echo "Total width (not including width of right-most terrain piece): " . ($max_x - $min_x) . PHP_EOL;
   
-  echo "Adjusting X offsets based upon smallest terrain X Value..." . PHP_EOL;
+  //echo "Adjusting X offsets based upon smallest terrain X Value..." . PHP_EOL;
   
   foreach ($level->terrainArray as $key => $val)
   {
