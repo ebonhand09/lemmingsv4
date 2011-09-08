@@ -13,6 +13,7 @@ _ter_drw_x_loc		RMB	2
 _ter_drw_ter_id		RMB	2
 _ter_drw_mode		RMB	1
 _ter_drw_nooverlap	RMB	1
+_ter_drw_upsidedown	RMB	1
 			ENDSECTION
 
 			SECTION	module_drawterrain
@@ -33,13 +34,18 @@ draw_terrain_chunk
 			stb	_ter_drw_mode		; save untouched original
 			clr	_ter_height_adjust	; start off with zero
 			clr	_ter_drw_nooverlap	; start off with normal mode
+			clr	_ter_drw_upsidedown
 			lda	#Block_TerrainData
 			sta	Page_TerrainData
 			lda	_ter_drw_y_loc
-			andb	#1
+			bitb	#1
 			beq	_dtc_skip_nooverlap_store
 			dec	_ter_drw_nooverlap	; should roll back to FF
 _dtc_skip_nooverlap_store	
+			bitb	#2
+			beq	_dtc_skip_upsidedown_store
+			dec	_ter_drw_upsidedown
+_dtc_skip_upsidedown_store
 			; Adjust for top-crop
 			cmpa	#$A0	; see if vertical offset is more than 159 - if so, it's negative
 			blo	_dtc_skip_negative_adjustment ; if within range, skip all this
@@ -67,7 +73,26 @@ _dtc_skip_negative_adjustment
 			stb	_ter_drw_lines_left	; number of lines to be drawn
 			; all terrain info is now in local vars
 
+			;** if in upsidedown mode, put u at first byte of last line
+			; b still has lines_left in it, we'll use that to count down while we skip
+			tst	_ter_drw_upsidedown
+			beq	_dtc_skip_usd_adjust_u_0
+			decb
+			decb
+!			leau	a,u
+			decb
+			bne	<
+			tst	_ter_height_adjust
+			beq	_dtc_skip_height_adjust
+			nega
+			ldb	_ter_height_adjust
+!			leau	a,u
+			dec	_ter_drw_lines_left
+			decb
+			bne	<
+			bra	_dtc_skip_height_adjust
 
+_dtc_skip_usd_adjust_u_0
 			;** Skip rows based upon _ter_height_adjust
 			tst	_ter_height_adjust	; are there rows to skip?
 			beq	_dtc_skip_height_adjust
@@ -78,16 +103,6 @@ _dtc_skip_negative_adjustment
 			decb
 			bne	<
 _dtc_skip_height_adjust
-
-			;** adjust u
-			cmpu	#Window_TerrainData+$2000
-			blo	_dtc_skip_adjust_src0
-			tfr	u,d
-			suba	#$20
-			tfr	d,u
-			inc	Page_TerrainData
-			bra	_dtc_skip_height_adjust	; go again
-_dtc_skip_adjust_src0
 			;** Point X at destination (virtual screen)
 _dtc_new_row		lda	_ter_drw_y_loc	; get y offset to draw at
 			cmpa	#160		; see if we're within bounds
@@ -95,7 +110,7 @@ _dtc_new_row		lda	_ter_drw_y_loc	; get y offset to draw at
 			rts
 _dtc_continue		lbsr	get_addr_start_of_line ; convert a into d and remap
 			ldx	_ter_drw_x_loc	; get x offset
-			exg	x,d		; maybe fix offset thingy?
+			;exg	x,d		; maybe fix offset thingy?
 			leax	d,x		; add vert and horizontal offsets
 			; X now points to dest, U to src
 
@@ -103,6 +118,22 @@ _dtc_line_start
 			lda	_ter_width	; get number of bytes to write
 			sta	_ter_drw_counter
 _dtc_line_loop
+			cmpu	#Window_TerrainData+$2000
+			blo	_dtc_reverse_src_adjust
+			tfr	u,d
+			suba	#$20
+			tfr	d,u
+			inc	Page_TerrainData
+			bra	_dtc_line_loop
+_dtc_reverse_src_adjust
+			cmpu	#Window_TerrainData
+			bhs	_dtc_skip_adjust_src
+			tfr	u,d
+			adda	#$20
+			tfr	d,u
+			dec	Page_TerrainData
+			bra	_dtc_reverse_src_adjust
+_dtc_skip_adjust_src
 			ldb	,u+		; get byte to write
 			beq	_dtc_skip_write	; if it's empty, don't write it
 
@@ -134,18 +165,19 @@ _dtc_write		stb	,x+		; write updated bg pixel and move on
 _dtc_skip_write
 			leax	1,x		; don't write anything
 _dtc_done_writing	
-			cmpu	#Window_TerrainData+$2000
-			blo	_dtc_skip_adjust_src
-			tfr	u,d
-			suba	#$20
-			tfr	d,u
-			inc	Page_TerrainData
-			bra	_dtc_done_writing
-_dtc_skip_adjust_src
+
 			dec	_ter_drw_counter ; dec number of bytes left to write
 			bne	_dtc_line_loop	; more to write? go back
+
+			tst	_ter_drw_upsidedown
+			beq	_dtc_skip_upsidedown_eol_adjust
+			lda	_ter_width
+			lsla
+			nega
+			leau	a,u
+_dtc_skip_upsidedown_eol_adjust
 			inc	_ter_drw_y_loc	; next line
 			dec	_ter_drw_lines_left ; more lines to go?
-			bne	_dtc_new_row	; go and do it again
+			lbne	_dtc_new_row	; go and do it again
 			rts
 			ENDSECTION

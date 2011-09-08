@@ -55,8 +55,15 @@ _next_level_chunk
 			pshs	y			; keep struct for later
 			lda	LevelTerrainStruct.PosTop,y	; vertical loc
 			ldx	LevelTerrainStruct.PosLeft,y	; horizontal loc
-			ldb	LevelTerrainStruct.DrawNotOverlap,y ; draw mode
-			;clrb
+			clrb						; clear mode flag
+			tst	LevelTerrainStruct.DrawNotOverlap,y ; draw mode
+			beq	_nlc_skip_notoverlap
+			orb	#1
+_nlc_skip_notoverlap
+			tst	LevelTerrainStruct.DrawUpsideDown,y
+			beq	_nlc_skip_upsidedown
+			orb	#2
+_nlc_skip_upsidedown
 			pshs	d
 			clra
 			ldb	LevelTerrainStruct.ID,y	; y now = id
