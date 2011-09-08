@@ -15,7 +15,7 @@ TerrainData			INCLUDEBIN	"../bin/gfx/terrain0.bin"
 				
 				SECTION	.payload_level			; ORG	$8000
 LevelData			EXPORT
-LevelData			INCLUDEBIN	"../bin/lvl/0100.lvl"
+LevelData			INCLUDEBIN	"../bin/lvl/0102.lvl"
 				ENDSECTION
 
 				SECTION .payload_terrain_offset_physical_map ; ORG $FFA5

@@ -133,18 +133,18 @@ _dtc_write		stb	,x+		; write updated bg pixel and move on
 			; Done drawing, skip the skip
 _dtc_skip_write
 			leax	1,x		; don't write anything
-_dtc_done_writing	dec	_ter_drw_counter ; dec number of bytes left to write
-			bne	_dtc_line_loop	; more to write? go back
-			inc	_ter_drw_y_loc	; next line
-			;** adjust u
-_dtc_adjust_u		cmpu	#Window_TerrainData+$2000
+_dtc_done_writing	
+			cmpu	#Window_TerrainData+$2000
 			blo	_dtc_skip_adjust_src
 			tfr	u,d
 			suba	#$20
 			tfr	d,u
 			inc	Page_TerrainData
-			bra	_dtc_adjust_u
+			bra	_dtc_done_writing
 _dtc_skip_adjust_src
+			dec	_ter_drw_counter ; dec number of bytes left to write
+			bne	_dtc_line_loop	; more to write? go back
+			inc	_ter_drw_y_loc	; next line
 			dec	_ter_drw_lines_left ; more lines to go?
 			bne	_dtc_new_row	; go and do it again
 			rts
