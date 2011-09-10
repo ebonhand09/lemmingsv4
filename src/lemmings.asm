@@ -69,8 +69,10 @@ _nlc_skip_upsidedown
 			ldb	LevelTerrainStruct.ID,y	; y now = id
 			tfr	d,y
 			puls	d
+			;cmpx	#707			; should be 767
+			;bhi	_nlc_post_draw
 			lbsr	draw_terrain_chunk
-			puls	y			; y = chunk just drawn
+_nlc_post_draw		puls	y			; y = chunk just drawn
 			leay	sizeof{LevelTerrainStruct},y ; move to next chunk
 			ldx	_main_chunk_counter	; get and dec counter
 			leax	-1,x
@@ -81,13 +83,13 @@ _nlc_skip_upsidedown
 			lbsr	setup_interrupts	; Get things organised
 
 			ldx	#0			; offset to view
-
+			
 @_do_loop
 			cwai	#$EF	
 			pshs	x
 			lbsr	copy_virt_to_phys	; render it to gfx
 			puls	x
-			leax	2,x
+			;leax	2,x
 			cmpx	#640
 			blo	@_do_loop
 @_do_other_loop
@@ -95,7 +97,7 @@ _nlc_skip_upsidedown
 			pshs	x
 			lbsr	copy_virt_to_phys	; render it to gfx
 			puls	x
-			leax	-2,x
+			;leax	-2,x
 			cmpx	#0
 			bhi	@_do_other_loop
 			jmp	@_do_loop

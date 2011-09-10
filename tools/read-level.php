@@ -56,16 +56,14 @@
     
     function setXOffset($xoff)
     {
+	echo $xoff . PHP_EOL;
+	if ($xoff > 32767) { $xoff = $xoff - 65535; }
     	$this->x_offset = floor($xoff / 2);
     }
     
     function adjustXOffset($adjust)
     {
     	//$this->x_offset = $this->x_offset - $adjust;
-    	if ($this->x_offset < 0)
-    	{
-    		die(sprintf("tTerrainPiece %s X Offset error. Adjusted to %s by value %s\n", $this->id, $this->x_offset, $adjust));
-    	}
     }
     
     function setYOffset($yoff)
@@ -225,7 +223,7 @@
   /* Explore some information here */
 
   $min_x = 99999;
-  $max_x = 0;
+  $max_x = -999999;
 
   for ($i = 0; $i < $level->totalTerrain; $i++)
   {
