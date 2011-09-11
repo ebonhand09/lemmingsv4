@@ -16,9 +16,6 @@ _ter_drw_x_loc		RMB	2
 _ter_drw_x_skip_left	RMB	1
 _ter_drw_x_skip_right	RMB	1
 _ter_drw_mode		RMB	1
-_ter_drw_nooverlap	RMB	1
-_ter_drw_upsidedown	RMB	1
-_ter_drw_black		RMB	1
 			ENDSECTION
 
 			SECTION	module_drawterrain
@@ -43,17 +40,10 @@ draw_terrain_chunk
 			clr	_ter_drw_y_skip_bottom
 			clr	_ter_drw_x_skip_left
 			clr	_ter_drw_x_skip_right
-			clr	_ter_drw_nooverlap	; reset nooverlap flag
-			clr	_ter_drw_upsidedown	; reset upsidedown flag
-			clr	_ter_drw_black		; reset black flag
-
 
 			;** Reset TerrainData mapping
 			lda	#Block_TerrainData
 			sta	Page_TerrainData
-
-			;** Put draw mode flags into local variables
-			lbsr	dtc_set_draw_mode_flags
 
 			;** Put Terrain Data into local variables
 			lbsr	dtc_get_terrain_data
@@ -139,7 +129,7 @@ __dtc_post_upsidedown_mode_check
 			lda	_ter_drw_mode
 			cmpa	#4			; Check for black mode
 			bne	__dtc_post_black_mode_check
-			;lbsr	dtc_execute_black_mode
+			lbsr	dtc_execute_black_mode
 			rts
 __dtc_post_black_mode_check
 
@@ -386,6 +376,74 @@ __dtc_exusd_dl_0
 			rts
 ;** end dtc_execute_upsidedown_mode
 
+;** dtc_execute_black_mode
+; This subroutine handles drawing a terrain chunk with no special mode considerations
+; e.g no masking of any kind. It still makes use of postional adjustments such as
+; top-cropping, left-cropping, right-cropping and bottom-cropping
+dtc_execute_black_mode
+			lda	_ter_width		; number of bytes to draw
+			suba	_ter_drw_x_skip_left	; skip bytes to the left
+			suba	_ter_drw_x_skip_right	; skip bytes to the right
+			sta	_ter_drw_counter	; draw this many bytes per line
+
+			lda	_ter_drw_lines_left	; number of lines to draw
+			suba	_ter_drw_y_skip_top	; skip lines to the top
+			suba	_ter_drw_y_skip_bottom	; skip lines to the bottom
+			sta	_ter_drw_lines_left
+
+			ldu	_ter_offset		; point u at data
+			lbsr	dtc_skip_top_crop_lines	; adjust src as needed
+__dtc_exblk_new_row
+			;** Remap destination pages
+			lda	_ter_drw_y_loc		; y pos to draw at
+			lbsr	get_addr_start_of_line	; convert a into d and remap
+
+			ldx	_ter_drw_x_loc		; get x offset
+			leax	d,x			; add vert and horiz offsets
+			;** X now = Destination Byte
+
+			lda	_ter_drw_x_skip_left
+			leau	a,u			; push src forward if needed
+
+			;** Remap source pages
+			lbsr	dtc_adjust_src_fwd	; ensure u is mapped
+
+			;** Final preparations
+			lda	_ter_drw_counter	; number of bytes to draw
+__dtc_exblk_draw_line
+			ldb	,u+			; load source byte
+			beq	__dtc_exblk_dl_0	; don't write if zero
+			pshs	a			; save the byte count
+
+			;** Mask terrain byte
+
+			clra
+			bitb	#$0F			; test right pixel
+			bne	__dtc_exblk_post_right_pixel
+			ora	#$0F			; rhs mask lets bg through
+__dtc_exblk_post_right_pixel
+			bitb	#$F0			; test left pixel
+			bne	__dtc_exblk_post_left_pixel
+			ora	#$F0			; lhs mask lets bg through
+__dtc_exblk_post_left_pixel
+			anda	,x			; merge mask with bg
+			sta	,x			; write mask
+			puls	a
+__dtc_exblk_dl_0
+			leax	1,x			; move to next dest byte
+			lbsr	dtc_adjust_src_fwd	; ensure u is within range
+			deca				; decrease byte count
+			bne	__dtc_exblk_draw_line	; loop for new byte
+
+			lda	_ter_drw_x_skip_right
+			leau	a,u			; skip bytes to the right
+			inc	_ter_drw_y_loc		; point at next line	
+			dec	_ter_drw_lines_left
+			bne	__dtc_exblk_new_row
+
+			rts
+;** end dtc_execute_black_mode
+
 ;** dtc_adjust_src_fwd
 ; This subroutine checks if the current source pointer is within the
 ; #Window_TerrainData page, and if not, it remaps and adjusts appropriately
@@ -535,27 +593,5 @@ __dtc_abc_0
 			puls	d,x
 			rts
 ;** end dtc_adjust_bottom_crop
-
-;** dtc_set_draw_mode_flags
-; This subroutine sets the draw mode flags based upon the draw mode byte passed
-; to the parent routine
-dtc_set_draw_mode_flags
-			pshs	b
-			ldb	_ter_drw_mode
-			bitb	#1			; Check for nooverlap
-			beq	__dtc_sdmf_0
-			dec	_ter_drw_nooverlap
-__dtc_sdmf_0
-			bitb	#2			; Check for upsidedown
-			beq	__dtc_sdmf_1
-			dec	_ter_drw_upsidedown
-__dtc_sdmf_1
-			bitb	#4			; Check for black
-			beq	__dtc_sdmf_2
-			dec	_ter_drw_black
-__dtc_sdmf_2
-			puls	b
-			rts
-;** end dtc_set_draw_mode_flags
 
 			ENDSECTION
