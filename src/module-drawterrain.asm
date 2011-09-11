@@ -3,24 +3,29 @@
 			INCLUDE	"defines.asm"		; Coco hardware definitions
 
 			SECTION .bss,bss
-_ter_height_adjust	RMB	1
+_ter_id			RMB	2
+_ter_offset		RMB	2
 _ter_width		RMB	1
 _ter_height		RMB	1
 _ter_drw_lines_left	RMB	1
 _ter_drw_counter	RMB	1
 _ter_drw_y_loc		RMB	1
+_ter_drw_y_skip_top	RMB	1
+_ter_drw_y_skip_bottom	RMB	1
 _ter_drw_x_loc		RMB	2
-_ter_drw_ter_id		RMB	2
+_ter_drw_x_skip_left	RMB	1
+_ter_drw_x_skip_right	RMB	1
 _ter_drw_mode		RMB	1
 _ter_drw_nooverlap	RMB	1
 _ter_drw_upsidedown	RMB	1
+_ter_drw_black		RMB	1
 			ENDSECTION
 
 			SECTION	module_drawterrain
 draw_terrain_chunk	EXPORT
 
 
-;*** draw_terrain_chunk
+;*** draw_terrain_chunk_old
 ;	Write terrain graphic data to the virtual screen
 ; ENTRY:	a = vertical offset (in pixels)
 ;		x = horizontal offset (in bytes)
@@ -28,156 +33,279 @@ draw_terrain_chunk	EXPORT
 ;		b = draw mode (bitmask)
 
 draw_terrain_chunk
-			stx	_ter_drw_x_loc		; save untouched original
-			sta	_ter_drw_y_loc		; save untouched original
-			sty	_ter_drw_ter_id		; save untouched original
-			stb	_ter_drw_mode		; save untouched original
-			clr	_ter_height_adjust	; start off with zero
-			clr	_ter_drw_nooverlap	; start off with normal mode
-			clr	_ter_drw_upsidedown
+			stx	_ter_drw_x_loc		; save passed x location
+			sta	_ter_drw_y_loc		; save passed y location
+			sty	_ter_id			; save passed terrain id
+			stb	_ter_drw_mode		; save passed draw mode
+
+			;** Clear local variables
+			clr	_ter_drw_y_skip_top	; reset height adjustment
+			clr	_ter_drw_y_skip_bottom
+			clr	_ter_drw_x_skip_left
+			clr	_ter_drw_x_skip_right
+			clr	_ter_drw_nooverlap	; reset nooverlap flag
+			clr	_ter_drw_upsidedown	; reset upsidedown flag
+			clr	_ter_drw_black		; reset black flag
+
+
+			;** Reset TerrainData mapping
 			lda	#Block_TerrainData
 			sta	Page_TerrainData
-			lda	_ter_drw_y_loc
-			bitb	#1
-			beq	_dtc_skip_nooverlap_store
-			dec	_ter_drw_nooverlap	; should roll back to FF
-_dtc_skip_nooverlap_store	
-			bitb	#2
-			beq	_dtc_skip_upsidedown_store
-			dec	_ter_drw_upsidedown
-_dtc_skip_upsidedown_store
-			; Adjust for top-crop
-			cmpa	#$A0	; see if vertical offset is more than 159 - if so, it's negative
-			blo	_dtc_skip_negative_adjustment ; if within range, skip all this
-			nega				; this calculates how many rows to skip to get to 0
-			sta	_ter_height_adjust	; use this to know how many to skip
-			clr	_ter_drw_y_loc		; draw at row zero
-_dtc_skip_negative_adjustment
-			; Adjust for bottom-crop
-			; Adjust for left-crop
-			; Adjust for right-crop
 
-			;** Calculate start of terrain data
-			ldd	_ter_drw_ter_id		; A = 0, B = ID
+			;** Put draw mode flags into local variables
+			lbsr	dtc_set_draw_mode_flags
+
+			;** Put Terrain Data into local variables
+			lbsr	dtc_get_terrain_data
+
+			;** Adjust for top-crop
+			lbsr	dtc_adjust_top_crop
+
+			;** Adjust for left-crop
+			lbsr	dtc_adjust_left_crop
+
+			;** Adjust for right-crop
+			lbsr	dtc_adjust_right_crop
+
+			;** Adjust for bottom-crop
+			lbsr	dtc_adjust_bottom_crop
+
+			;** Early Bail Conditions
+			; If X location is more than 768, bail early
+			ldx	_ter_drw_x_loc
+			cmpx	#768
+			blt	__dtc_post_early_bail_0
+			rts
+__dtc_post_early_bail_0
+			; If chunk is entirely above virtual screen, bail early
+			lda	_ter_height
+			cmpa	_ter_drw_y_skip_top
+			bge	__dtc_post_early_bail_1
+			rts
+__dtc_post_early_bail_1
+			; If chunk is entirely below virtual screen, bail early
+			cmpa	_ter_drw_y_skip_bottom
+			bge	__dtc_post_early_bail_2
+			rts
+__dtc_post_early_bail_2
+			; If chunk is entirely to the left of virtual screen, bail early
+			lda	_ter_width
+			cmpa	_ter_drw_x_skip_left
+			bge	__dtc_post_early_bail_3
+			rts
+__dtc_post_early_bail_3
+				
+
+			;** If we're in normal draw mode, go draw and go home
+			tst	_ter_drw_mode
+			bne	__dtc_post_normal_mode_check
+			lbsr	dtc_execute_normal_mode
+			rts
+__dtc_post_normal_mode_check
+
+			
+
+			rts				; Fallthrough safety
+;** dtc_execute_normal_mode
+; This subroutine handles drawing a terrain chunk with no special mode considerations
+; e.g no masking of any kind. It still makes use of postional adjustments such as
+; top-cropping, left-cropping, right-cropping and bottom-bail
+dtc_execute_normal_mode
+			lda	_ter_width		; number of bytes to draw
+			suba	_ter_drw_x_skip_left	; skip bytes to the left
+			suba	_ter_drw_x_skip_right	; skip bytes to the right
+			sta	_ter_drw_counter	; draw this many bytes per line
+
+			lda	_ter_drw_lines_left	; number of lines to draw
+			suba	_ter_drw_y_skip_top	; skip lines to the top
+			suba	_ter_drw_y_skip_bottom	; skip lines to the bottom
+			sta	_ter_drw_lines_left
+
+			ldu	_ter_offset		; point u at data
+			lbsr	dtc_skip_top_crop_lines	; adjust src as needed
+__dtc_exnorm_new_row
+			;** Remap destination pages
+			lda	_ter_drw_y_loc		; y pos to draw at
+			lbsr	get_addr_start_of_line	; convert a into d and remap
+
+			ldx	_ter_drw_x_loc		; get x offset
+			leax	d,x			; add vert and horiz offsets
+			;** X now = Destination Byte
+
+			lda	_ter_drw_x_skip_left
+			leau	a,u			; push src forward if needed
+
+			;** Remap source pages
+			lbsr	dtc_adjust_src_fwd	; ensure u is mapped
+
+			;** Final preparations
+			lda	_ter_drw_counter	; number of bytes to draw
+__dtc_exnorm_draw_line
+			ldb	,u+			; <-- U DOES NOT POINT TO DATA
+			stb	,x+
+			lbsr	dtc_adjust_src_fwd	; ensure u is within range
+			deca				; decrease byte count
+			bne	__dtc_exnorm_draw_line	; loop for new byte
+
+			lda	_ter_drw_x_skip_right
+			leau	a,u			; skip bytes to the right
+			inc	_ter_drw_y_loc		; point at next line	
+			dec	_ter_drw_lines_left
+			bne	__dtc_exnorm_new_row
+
+;;;;;;;;;;;;;;;;;;;; YOU ARE HERE ;;;;;;;;;;;;;;
+
+
+			rts
+;** end dtc_execute_normal_mode
+
+;** dtc_adjust_src_fwd
+; This subroutine checks if the current source pointer is within the
+; #Window_TerrainData page, and if not, it remaps and adjusts appropriately
+dtc_adjust_src_fwd
+			pshs	d
+__dtc_asf_0
+			cmpu	#Window_TerrainData+$2000
+			blo	__dtc_asf_1
+			leau	-$2000,u
+			inc	Page_TerrainData
+			bra	__dtc_asf_0
+
+__dtc_asf_1
+			puls	d
+			rts
+;** end dtc_adjust_src_fwd
+
+;** dtc_skip_top_crop_lines
+; This subroutine skips over unneeded src bytes as specified by _ter_drw_y_skip_top
+; U must already point at src data
+dtc_skip_top_crop_lines
+			tst	_ter_drw_y_skip_top
+			beq	__dtc_stcl_0
+			pshs	d
+			lda	_ter_width		; skip this many bytes
+			ldb	_ter_drw_y_skip_top	; .. this many times
+			mul				; total skip in d
+			leau	d,u			; skip bytes
+			puls	d
+__dtc_stcl_0
+			rts
+
+;** dtc_get_terrain_data
+; This subroutine uses the Terrain Offset Table to calculate the offset of
+; the terrain data, and puts all data into local variables
+dtc_get_terrain_data
+			pshs	d,x
+			ldd	_ter_id		; a = 0, b = terrain id
 			ldx	#TerrainOffsetTable
 			abx
 			abx
 			abx
 			abx
-			; X now points to TerrainStruct block for ter_id
-
-			;** Get data from TerrainStruct at X
-			ldu	TerrainStruct.DataPointer,X	; U = ter_data
-			ldd	TerrainStruct.Width,X	; A = Width, B = Height
-			std	_ter_width	; save the width and height for loop u
+			ldd	TerrainStruct.DataPointer,X
+			std	_ter_offset
+			ldd	TerrainStruct.Width,X	; a = width, b = height
+			std	_ter_width		; this writes height too!
 			stb	_ter_drw_lines_left	; number of lines to be drawn
-			; all terrain info is now in local vars
-
-			;** if in upsidedown mode, put u at first byte of last line
-			; b still has lines_left in it, we'll use that to count down while we skip
-			tst	_ter_drw_upsidedown
-			beq	_dtc_skip_usd_adjust_u_0
-			decb
-			decb
-!			leau	a,u
-			decb
-			bne	<
-			tst	_ter_height_adjust
-			beq	_dtc_skip_height_adjust
-			nega
-			ldb	_ter_height_adjust
-!			leau	a,u
-			dec	_ter_drw_lines_left
-			decb
-			bne	<
-			bra	_dtc_skip_height_adjust
-
-_dtc_skip_usd_adjust_u_0
-			;** Skip rows based upon _ter_height_adjust
-			tst	_ter_height_adjust	; are there rows to skip?
-			beq	_dtc_skip_height_adjust
-			lda	_ter_width		; this many bytes per row to skip
-			ldb	_ter_height_adjust	; b = counter
-!			leau	a,u			; skip bytes as per width
-			dec	_ter_drw_lines_left	; row not to be drawn later
-			decb
-			bne	<
-_dtc_skip_height_adjust
-			;** Point X at destination (virtual screen)
-_dtc_new_row		lda	_ter_drw_y_loc	; get y offset to draw at
-			cmpa	#160		; see if we're within bounds
-			blo	_dtc_continue	; skip the return if we're out-of-bounds
+			puls	d,x
 			rts
-_dtc_continue		lbsr	get_addr_start_of_line ; convert a into d and remap
-			ldx	_ter_drw_x_loc	; get x offset
-			;exg	x,d		; maybe fix offset thingy?
-			leax	d,x		; add vert and horizontal offsets
-			; X now points to dest, U to src
+;** end dtc_get_start_of_terrain_data
 
-_dtc_line_start		
-			lda	_ter_width	; get number of bytes to write
-			sta	_ter_drw_counter
-_dtc_line_loop
-			cmpu	#Window_TerrainData+$2000
-			blo	_dtc_reverse_src_adjust
-			tfr	u,d
-			suba	#$20
-			tfr	d,u
-			inc	Page_TerrainData
-			bra	_dtc_line_loop
-_dtc_reverse_src_adjust
-			cmpu	#Window_TerrainData
-			bhs	_dtc_skip_adjust_src
-			tfr	u,d
-			adda	#$20
-			tfr	d,u
-			dec	Page_TerrainData
-			bra	_dtc_reverse_src_adjust
-_dtc_skip_adjust_src
-			ldb	,u+		; get byte to write
-			beq	_dtc_skip_write	; if it's empty, don't write it
-
-			;** Check for no-overlap
-			tst	_ter_drw_nooverlap ; are we in no-overlap mode?
-			beq	_dtc_mask_ter	; nope, so skip this stuff
-			lda	,x		; get bg pixel
-			beq	_dtc_write	; no bg, so just write
-			bita	#$0F		; check bg rhs contents
-			beq	_dtc_mask_bg_0	; if empty, don't change ter byte
-			andb	#$F0		; empty ter rhs
-_dtc_mask_bg_0		bita	#$F0		; check bg lhs contents
-			beq	_dtc_mask_ter	; if empty, don't change ter byte
-			andb	#$0F		; empty ter lhs
-_dtc_mask_ter		;** Mask terrain byte
-			clra			; a = mask
-			bitb	#$0F		; text right-hand pixel
-			bne	_dtc_mask_ter_0	; has something to write, skip mask
-			ora	#$0F		; rhs mask lets bg through
-_dtc_mask_ter_0		bitb	#$F0		; text left-hand pixel
-			bne	_dtc_mask_ter_1	; has something to write, skip mask
-			ora	#$F0		; lhs mask lets bg through
-_dtc_mask_ter_1		anda	,x		; merge mask with bg
-			sta	,x		; write updated bg pixel
-			orb	,x		; merge pixel with masked bg
-_dtc_write		stb	,x+		; write updated bg pixel and move on
-			bra	_dtc_done_writing
-			; Done drawing, skip the skip
-_dtc_skip_write
-			leax	1,x		; don't write anything
-_dtc_done_writing	
-
-			dec	_ter_drw_counter ; dec number of bytes left to write
-			bne	_dtc_line_loop	; more to write? go back
-
-			tst	_ter_drw_upsidedown
-			beq	_dtc_skip_upsidedown_eol_adjust
-			lda	_ter_width
-			lsla
-			nega
-			leau	a,u
-_dtc_skip_upsidedown_eol_adjust
-			inc	_ter_drw_y_loc	; next line
-			dec	_ter_drw_lines_left ; more lines to go?
-			lbne	_dtc_new_row	; go and do it again
+;** dtc_adjust_top_crop
+; This subroutine checks the requested y draw location
+; If it's more than 159, it treats the location as negative, sets the y draw loc to zero
+; and prepares _ter_drw_y_skip_top for skipping appropriate lines later
+dtc_adjust_top_crop
+			pshs	a
+			lda	_ter_drw_y_loc
+			cmpa	#$A0			; Test against 160
+			blo	__dtc_atc_0		; bail if less
+			nega				; invert it (turn it negative)
+			sta	_ter_drw_y_skip_top	; store for later
+			clr	_ter_drw_y_loc		; reset to drawing at zero
+__dtc_atc_0
+			puls	a
 			rts
+;** end dtc_adjust_top_crop
+
+;** dtc_adjust_left_crop
+; This subroutine checks the requested x draw location
+; If it's negative, it calculates how many bytes to skip at the beginning of
+; each line drawn, and resets the draw x location to zero
+dtc_adjust_left_crop
+			pshs	d
+			ldd	_ter_drw_x_loc
+			cmpx	#0			; Test against 0
+			bge	__dtc_alc_0		; bail if 0 or more
+			negb				; invert it (turn it negative)
+			stb	_ter_drw_x_skip_left	; save for later
+			ldx	#0
+			stx	_ter_drw_x_loc		; reset draw location to zero
+__dtc_alc_0
+			puls	d
+			rts
+;** end dtc_adjust_left_crop
+
+;** dtc_adjust_right_crop
+; This subroutine checks the requested x draw location and the width of the chunk
+; If bytes would be written past the right-most edge of the virtual screen,
+; appropriate bytes are calculated to allow the draw routine to skip them
+; x_loc should have already been checked to see if it's past the edge on it's own
+dtc_adjust_right_crop
+			pshs	d,x
+			ldx	_ter_drw_x_loc		; get requested draw location
+			ldb	_ter_width		; get width of chunk
+			abx				; x = final byte location
+			tfr	x,d
+			subd	#768			; compare against edge
+			blt	__dtc_arc_0		; if less/eq, no skip needed
+			stb	_ter_drw_x_skip_right	; skip this many bytes to the right
+__dtc_arc_0
+			puls	d,x
+			rts
+;** end dtc_adjust_right_crop
+
+;** dtc_adjust_bottom_crop
+; This subroutine checks the requested y draw location and the height of the chunk
+; If the chunk would be drawn past line 160, the additional lines are artificially
+; skipped
+dtc_adjust_bottom_crop
+			pshs	d,x
+			clra
+			ldb	_ter_drw_y_loc		
+			tfr	d,x			; get y location into x
+			ldb	_ter_height
+			abx				; add chunk height
+			cmpx	#160			; test against 160
+			blt	__dtc_abc_0		; if less, no adjust needed
+			tfr	x,d
+			subb	#160			; 
+			stb	_ter_drw_y_skip_bottom	; skip this many lines at bottom
+__dtc_abc_0
+			puls	d,x
+			rts
+;** end dtc_adjust_bottom_crop
+
+;** dtc_set_draw_mode_flags
+; This subroutine sets the draw mode flags based upon the draw mode byte passed
+; to the parent routine
+dtc_set_draw_mode_flags
+			pshs	b
+			ldb	_ter_drw_mode
+			bitb	#1			; Check for nooverlap
+			beq	__dtc_sdmf_0
+			dec	_ter_drw_nooverlap
+__dtc_sdmf_0
+			bitb	#2			; Check for upsidedown
+			beq	__dtc_sdmf_1
+			dec	_ter_drw_upsidedown
+__dtc_sdmf_1
+			bitb	#4			; Check for black
+			beq	__dtc_sdmf_2
+			dec	_ter_drw_black
+__dtc_sdmf_2
+			puls	b
+			rts
+;** end dtc_set_draw_mode_flags
+
 			ENDSECTION

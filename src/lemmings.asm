@@ -71,7 +71,16 @@ _nlc_skip_upsidedown
 			puls	d
 			;cmpx	#707			; should be 767
 			;bhi	_nlc_post_draw
+
+			;** hacky test code
+			ldy	#23			; terrain id
+			lda	#0			; 1px top
+			ldx	#767			; 1px left
+			ldb	#0			; normal draw
+
+
 			lbsr	draw_terrain_chunk
+			jmp	_nlc_level_complete
 _nlc_post_draw		puls	y			; y = chunk just drawn
 			leay	sizeof{LevelTerrainStruct},y ; move to next chunk
 			ldx	_main_chunk_counter	; get and dec counter
@@ -79,10 +88,10 @@ _nlc_post_draw		puls	y			; y = chunk just drawn
 			stx	_main_chunk_counter
 			cmpx	#0
 			bne	_next_level_chunk
-
+_nlc_level_complete
 			lbsr	setup_interrupts	; Get things organised
 
-			ldx	#0			; offset to view
+			ldx	#640			; offset to view
 			
 @_do_loop
 			cwai	#$EF	
