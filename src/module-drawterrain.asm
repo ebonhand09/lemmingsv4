@@ -377,9 +377,9 @@ __dtc_exusd_dl_0
 ;** end dtc_execute_upsidedown_mode
 
 ;** dtc_execute_black_mode
-; This subroutine handles drawing a terrain chunk with no special mode considerations
-; e.g no masking of any kind. It still makes use of postional adjustments such as
-; top-cropping, left-cropping, right-cropping and bottom-cropping
+; This subroutine handles drawing a terrain chunk in black draw mode
+; It's a variant of dtc_execute_normal_mode that doesn't merge in the terrain chunk data, but only
+; applies the background mask. This could probably be improved speed-wise
 dtc_execute_black_mode
 			lda	_ter_width		; number of bytes to draw
 			suba	_ter_drw_x_skip_left	; skip bytes to the left
