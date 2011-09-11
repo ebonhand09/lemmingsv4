@@ -104,19 +104,19 @@ __dtc_post_early_bail_3
 __dtc_post_normal_mode_check
 
 			;** Check for nooverlap/upsidedown combined
-			lda	_ter_drw_mode
-			cmpa	#3			; Check for combined nooverlap/upsidedown modes
-			bne	__dtc_post_combined_nooverlap_upsidedown_mode
+			;lda	_ter_drw_mode
+			;cmpa	#3			; Check for combined nooverlap/upsidedown modes
+			;bne	__dtc_post_combined_nooverlap_upsidedown_mode
 			;lbsr	dtc_execute_combined_nooverlap_upsidedown_mode
-			rts
+			;rts
 __dtc_post_combined_nooverlap_upsidedown_mode
 
 			;** Check for upsidedown/black combined
-			lda	_ter_drw_mode
-			cmpa	#6			; Check for combined upsidedown/black modes
-			bne	__dtc_post_combined_upsidedown_black_mode
+			;lda	_ter_drw_mode
+			;cmpa	#6			; Check for combined upsidedown/black modes
+			;bne	__dtc_post_combined_upsidedown_black_mode
 			;lbsr	dtc_execute_combined_upsidedown_black_mode
-			rts
+			;rts
 __dtc_post_combined_upsidedown_black_mode
 
 			;** Check for nooverlap draw mode

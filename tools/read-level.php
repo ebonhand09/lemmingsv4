@@ -48,7 +48,8 @@
     public $notOverlap; // byte
     public $black; // byte
     public $upsideDown; // byte
-    
+    public $drawFlags; // byte
+
     function setID($id)
     {
     	$this->id = $id;
@@ -85,6 +86,14 @@
     function setUpsideDown($in)
     {
     	$this->upsideDown = ($in > 0) ? 255 : 0;
+    }
+
+    function calculateDrawFlags()
+    {
+	$this->drawFlags = 0;
+	if ($this->notOverlap) { $this->drawFlags = $this->drawFlags + 1; }
+	if ($this->upsideDown) { $this->drawFlags = $this->drawFlags + 2; }
+	if ($this->black) { $this->drawFlags = $this->drawFlags + 4; }
     }
     
   }
@@ -196,6 +205,7 @@
     $level->terrainArray[$i]->setNotOverlap(readData(2));
     $level->terrainArray[$i]->setBlack(readData(2));
     $level->terrainArray[$i]->setUpsideDown(readData(2));
+    $level->terrainArray[$i]->calculateDrawFlags();
   }
 
   $level->totalSteel = readData(2);
@@ -289,9 +299,10 @@
 		writeData($val->id);
 		writeData($val->x_offset,2);
 		writeData($val->y_offset);
-		writeData($val->notOverlap);
-		writeData($val->black);
-		writeData($val->upsideDown);
+		//writeData($val->notOverlap);
+		//writeData($val->black);
+		//writeData($val->upsideDown);
+		writeData($val->drawFlags);
 	}
 
 	

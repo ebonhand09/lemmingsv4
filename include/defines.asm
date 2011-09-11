@@ -225,9 +225,10 @@ LevelTerrainStruct	STRUCT
 ID				RMB	1
 PosLeft				RMB	2
 PosTop				RMB	1
-DrawNotOverlap			RMB	1
-DrawBlack			RMB	1
-DrawUpsideDown			RMB	1			
+DrawFlags			RMB	1
+;DrawNotOverlap			RMB	1
+;DrawBlack			RMB	1
+;DrawUpsideDown			RMB	1			
 			ENDSTRUCT
 			
 LevelSteelStruct	STRUCT
