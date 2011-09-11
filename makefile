@@ -21,7 +21,7 @@ terrain_0_srcs := ter_0_00.xpm ter_0_01.xpm ter_0_02.xpm ter_0_03.xpm ter_0_04.x
 	ter_0_41.xpm ter_0_42.xpm ter_0_43.xpm ter_0_44.xpm ter_0_45.xpm ter_0_46.xpm ter_0_47.xpm \
 	ter_0_48.xpm ter_0_49.xpm
 	
-level_srcs := test.dat
+level_srcs := 0000.dat
 
 terrain_0_objs := $(terrain_0_srcs:%.xpm=%.dat)
 level_objs := $(level_srcs:%.dat=%.lvl)

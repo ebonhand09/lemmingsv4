@@ -103,7 +103,45 @@ __dtc_post_early_bail_3
 			rts
 __dtc_post_normal_mode_check
 
+			;** Check for nooverlap/upsidedown combined
+			lda	_ter_drw_mode
+			bita	#3			; Check for combined nooverlap/upsidedown modes
+			beq	__dtc_post_combined_nooverlap_upsidedown_mode
+			;lbsr	dtc_execute_combined_nooverlap_upsidedown_mode
+			rts
+__dtc_post_combined_nooverlap_upsidedown_mode
+
+			;** Check for upsidedown/black combined
+			lda	_ter_drw_mode
+			bita	#6			; Check for combined upsidedown/black modes
+			beq	__dtc_post_combined_upsidedown_black_mode
+			;lbsr	dtc_execute_combined_upsidedown_black_mode
+			rts
+__dtc_post_combined_upsidedown_black_mode
+
+			;** Check for nooverlap draw mode
+			lda	_ter_drw_mode
+			bita	#1			; Check for nooverlap mode
+			beq	__dtc_post_nooverlap_mode_check
+			;lbsr	dtc_execute_nooverlap_mode
+			rts
+__dtc_post_nooverlap_mode_check
+
+			;** Check for upsidedown draw mode
+			lda	_ter_drw_mode
+			bita	#2			; Check for upsidedown mode
+			beq	__dtc_post_upsidedown_mode_check
+			;lbsr	dtc_execute_upsidedown_mode
+			rts
+__dtc_post_upsidedown_mode_check
 			
+			;** Check for black draw mode
+			lda	_ter_drw_mode
+			bita	#4			; Check for black mode
+			beq	__dtc_post_black_mode_check
+			;lbsr	dtc_execute_black_mode
+			rts
+__dtc_post_black_mode_check
 
 			rts				; Fallthrough safety
 ;** dtc_execute_normal_mode
@@ -141,8 +179,26 @@ __dtc_exnorm_new_row
 			;** Final preparations
 			lda	_ter_drw_counter	; number of bytes to draw
 __dtc_exnorm_draw_line
-			ldb	,u+			; <-- U DOES NOT POINT TO DATA
-			stb	,x+
+			ldb	,u+			; load source byte
+			beq	__dtc_exnorm_dl_0	; don't write if zero
+			pshs	a			; save the byte count
+
+			clra
+			bitb	#$0F			; test right pixel
+			bne	__dtc_exnorm_post_right_pixel
+			ora	#$0F			; rhs mask lets bg through
+__dtc_exnorm_post_right_pixel
+			bitb	#$F0			; test left pixel
+			bne	__dtc_exnorm_post_left_pixel
+			ora	#$F0			; lhs mask lets bg through
+__dtc_exnorm_post_left_pixel
+			anda	,x			; merge mask with bg
+			sta	,x			; write mask
+			orb	,x			; merge pixel with masked bg
+			stb	,x			; write merged pixel
+			puls	a
+__dtc_exnorm_dl_0
+			leax	1,x			; move to next dest byte
 			lbsr	dtc_adjust_src_fwd	; ensure u is within range
 			deca				; decrease byte count
 			bne	__dtc_exnorm_draw_line	; loop for new byte
@@ -152,9 +208,6 @@ __dtc_exnorm_draw_line
 			inc	_ter_drw_y_loc		; point at next line	
 			dec	_ter_drw_lines_left
 			bne	__dtc_exnorm_new_row
-
-;;;;;;;;;;;;;;;;;;;; YOU ARE HERE ;;;;;;;;;;;;;;
-
 
 			rts
 ;** end dtc_execute_normal_mode
