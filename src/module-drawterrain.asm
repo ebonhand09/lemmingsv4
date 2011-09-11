@@ -25,7 +25,7 @@ _ter_drw_black		RMB	1
 draw_terrain_chunk	EXPORT
 
 
-;*** draw_terrain_chunk_old
+;*** draw_terrain_chunk
 ;	Write terrain graphic data to the virtual screen
 ; ENTRY:	a = vertical offset (in pixels)
 ;		x = horizontal offset (in bytes)
@@ -105,49 +105,50 @@ __dtc_post_normal_mode_check
 
 			;** Check for nooverlap/upsidedown combined
 			lda	_ter_drw_mode
-			bita	#3			; Check for combined nooverlap/upsidedown modes
-			beq	__dtc_post_combined_nooverlap_upsidedown_mode
+			cmpa	#3			; Check for combined nooverlap/upsidedown modes
+			bne	__dtc_post_combined_nooverlap_upsidedown_mode
 			;lbsr	dtc_execute_combined_nooverlap_upsidedown_mode
 			rts
 __dtc_post_combined_nooverlap_upsidedown_mode
 
 			;** Check for upsidedown/black combined
 			lda	_ter_drw_mode
-			bita	#6			; Check for combined upsidedown/black modes
-			beq	__dtc_post_combined_upsidedown_black_mode
+			cmpa	#6			; Check for combined upsidedown/black modes
+			bne	__dtc_post_combined_upsidedown_black_mode
 			;lbsr	dtc_execute_combined_upsidedown_black_mode
 			rts
 __dtc_post_combined_upsidedown_black_mode
 
 			;** Check for nooverlap draw mode
 			lda	_ter_drw_mode
-			bita	#1			; Check for nooverlap mode
-			beq	__dtc_post_nooverlap_mode_check
-			;lbsr	dtc_execute_nooverlap_mode
+			cmpa	#1			; Check for nooverlap mode
+			bne	__dtc_post_nooverlap_mode_check
+			lbsr	dtc_execute_nooverlap_mode
 			rts
 __dtc_post_nooverlap_mode_check
 
 			;** Check for upsidedown draw mode
 			lda	_ter_drw_mode
-			bita	#2			; Check for upsidedown mode
-			beq	__dtc_post_upsidedown_mode_check
+			cmpa	#2			; Check for upsidedown mode
+			bne	__dtc_post_upsidedown_mode_check
 			;lbsr	dtc_execute_upsidedown_mode
 			rts
 __dtc_post_upsidedown_mode_check
 			
 			;** Check for black draw mode
 			lda	_ter_drw_mode
-			bita	#4			; Check for black mode
-			beq	__dtc_post_black_mode_check
+			cmpa	#4			; Check for black mode
+			bne	__dtc_post_black_mode_check
 			;lbsr	dtc_execute_black_mode
 			rts
 __dtc_post_black_mode_check
 
 			rts				; Fallthrough safety
+
 ;** dtc_execute_normal_mode
 ; This subroutine handles drawing a terrain chunk with no special mode considerations
 ; e.g no masking of any kind. It still makes use of postional adjustments such as
-; top-cropping, left-cropping, right-cropping and bottom-bail
+; top-cropping, left-cropping, right-cropping and bottom-cropping
 dtc_execute_normal_mode
 			lda	_ter_width		; number of bytes to draw
 			suba	_ter_drw_x_skip_left	; skip bytes to the left
@@ -183,6 +184,8 @@ __dtc_exnorm_draw_line
 			beq	__dtc_exnorm_dl_0	; don't write if zero
 			pshs	a			; save the byte count
 
+			;** Mask terrain byte
+
 			clra
 			bitb	#$0F			; test right pixel
 			bne	__dtc_exnorm_post_right_pixel
@@ -211,6 +214,87 @@ __dtc_exnorm_dl_0
 
 			rts
 ;** end dtc_execute_normal_mode
+
+;** dtc_execute_nooverlap_mode
+; This subroutine handles drawing a terrain chunk with nooverlap special mode
+; If the destination half-byte is zero, the half-byte from src will be written
+dtc_execute_nooverlap_mode
+			lda	_ter_width		; number of bytes to draw
+			suba	_ter_drw_x_skip_left	; skip bytes to the left
+			suba	_ter_drw_x_skip_right	; skip bytes to the right
+			sta	_ter_drw_counter	; draw this many bytes per line
+
+			lda	_ter_drw_lines_left	; number of lines to draw
+			suba	_ter_drw_y_skip_top	; skip lines to the top
+			suba	_ter_drw_y_skip_bottom	; skip lines to the bottom
+			sta	_ter_drw_lines_left
+
+			ldu	_ter_offset		; point u at data
+			lbsr	dtc_skip_top_crop_lines	; adjust src as needed
+__dtc_exnoov_new_row
+			;** Remap destination pages
+			lda	_ter_drw_y_loc		; y pos to draw at
+			lbsr	get_addr_start_of_line	; convert a into d and remap
+
+			ldx	_ter_drw_x_loc		; get x offset
+			leax	d,x			; add vert and horiz offsets
+			;** X now = Destination Byte
+
+			lda	_ter_drw_x_skip_left
+			leau	a,u			; push src forward if needed
+
+			;** Remap source pages
+			lbsr	dtc_adjust_src_fwd	; ensure u is mapped
+
+			;** Final preparations
+			lda	_ter_drw_counter	; number of bytes to draw
+__dtc_exnoov_draw_line
+			ldb	,u+			; load source byte
+			beq	__dtc_exnoov_dl_0	; don't write if zero
+			pshs	a			; save the byte count
+
+			;** Check Destination byte, and mask as appropriate
+			lda	,x			; get background byte
+			beq	__dtc_exnoov_write_byte	; if background empty, just write
+			bita	#$0F			; check bg rhs pixel
+			beq	__dtc_exnoov_post_bg_right_pixel	; empty = no change
+			andb	#$F0			; clear rhs pixel
+__dtc_exnoov_post_bg_right_pixel
+			bita	#$F0			; check bg lhs pixel
+			beq	__dtc_exnoov_post_bg_left_pixel		; empty = no change
+			andb	#$0F			; clear lhs pixel
+__dtc_exnoov_post_bg_left_pixel
+			
+			;** Mask terrain byte
+			clra
+			bitb	#$0F			; test right pixel
+			bne	__dtc_exnoov_post_right_pixel
+			ora	#$0F			; rhs mask lets bg through
+__dtc_exnoov_post_right_pixel
+			bitb	#$F0			; test left pixel
+			bne	__dtc_exnoov_post_left_pixel
+			ora	#$F0			; lhs mask lets bg through
+__dtc_exnoov_post_left_pixel
+			anda	,x			; merge mask with bg
+			sta	,x			; write mask
+			orb	,x			; merge pixel with masked bg
+__dtc_exnoov_write_byte
+			stb	,x			; write merged pixel
+			puls	a
+__dtc_exnoov_dl_0
+			leax	1,x			; move to next dest byte
+			lbsr	dtc_adjust_src_fwd	; ensure u is within range
+			deca				; decrease byte count
+			bne	__dtc_exnoov_draw_line	; loop for new byte
+
+			lda	_ter_drw_x_skip_right
+			leau	a,u			; skip bytes to the right
+			inc	_ter_drw_y_loc		; point at next line	
+			dec	_ter_drw_lines_left
+			bne	__dtc_exnoov_new_row
+
+			rts
+;** end dtc_execute_nooverlap_mode
 
 ;** dtc_adjust_src_fwd
 ; This subroutine checks if the current source pointer is within the
@@ -243,6 +327,7 @@ dtc_skip_top_crop_lines
 			puls	d
 __dtc_stcl_0
 			rts
+;** end dtc_skip_top_crop_lines
 
 ;** dtc_get_terrain_data
 ; This subroutine uses the Terrain Offset Table to calculate the offset of
