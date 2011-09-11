@@ -274,7 +274,7 @@
 	writeData($level->maxBashers);
 	writeData($level->maxMiners);
 	writeData($level->maxDiggers);
-	writeData($level->screenStart, 2);
+	writeData(floor($level->screenStart/2), 2);
 	writeData($level->graphicSet);
 	writeData($level->graphicSetExtension);
 	//writeData($level->totalObjects);

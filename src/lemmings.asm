@@ -14,6 +14,7 @@ _cur_vid_draw_block	RMB	1
 _alt_vid_draw_block	RMB	1
 _cur_vid_show_loc	RMB	2
 _alt_vid_show_loc	RMB	2
+_pc_start_loc		RMB	2
 			ENDSECTION
 
 			SECTION program_code
@@ -48,6 +49,8 @@ ProgramCode		;** To be loaded at $C000
 			sta	Page_LevelData		; $8000
 
 			ldy	#LevelData		; y = start of level
+			ldx	LevelStruct.ScreenStart,y
+			stx	_pc_start_loc
 			ldx	LevelStruct.TotalTerrain,y ; x now holds the count
 			stx	_main_chunk_counter	; keep it
 			leay	sizeof{LevelStruct},y	; y should now point to first levelchunk
@@ -74,9 +77,9 @@ _nlc_skip_upsidedown
 
 			;** hacky test code
 			;ldy	#23			; terrain id
-			;lda	#0			; 1px top
-			;ldx	#767			; 1px left
-			;ldb	#0			; normal draw
+			;lda	#-1			; 1px top
+			;ldx	#-1			; 1px left
+			;ldb	#2			; normal draw
 
 
 			lbsr	draw_terrain_chunk
@@ -91,7 +94,7 @@ _nlc_post_draw		puls	y			; y = chunk just drawn
 _nlc_level_complete
 			lbsr	setup_interrupts	; Get things organised
 
-			ldx	#0			; offset to view
+			ldx	_pc_start_loc		; offset to view
 			
 @_do_loop
 			cwai	#$EF	

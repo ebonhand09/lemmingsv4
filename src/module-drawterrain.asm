@@ -131,7 +131,7 @@ __dtc_post_nooverlap_mode_check
 			lda	_ter_drw_mode
 			cmpa	#2			; Check for upsidedown mode
 			bne	__dtc_post_upsidedown_mode_check
-			;lbsr	dtc_execute_upsidedown_mode
+			lbsr	dtc_execute_upsidedown_mode
 			rts
 __dtc_post_upsidedown_mode_check
 			
@@ -144,6 +144,7 @@ __dtc_post_upsidedown_mode_check
 __dtc_post_black_mode_check
 
 			rts				; Fallthrough safety
+;** end draw_terrain_chunk
 
 ;** dtc_execute_normal_mode
 ; This subroutine handles drawing a terrain chunk with no special mode considerations
@@ -296,6 +297,95 @@ __dtc_exnoov_dl_0
 			rts
 ;** end dtc_execute_nooverlap_mode
 
+;** dtc_execute_upsidedown_mode
+; This subroutine handles drawing a terrain chunk with upsidedown special flag
+; It reads the src data in byte order but in a line-reversed manner e.g last line will be served
+; first. In all other respects, this routine is the same as dtc_execute_normal_mode
+dtc_execute_upsidedown_mode
+			lda	_ter_width		; number of bytes to draw
+			suba	_ter_drw_x_skip_left	; skip bytes to the left
+			suba	_ter_drw_x_skip_right	; skip bytes to the right
+			sta	_ter_drw_counter	; draw this many bytes per line
+
+			lda	_ter_drw_lines_left	; number of lines to draw
+			suba	_ter_drw_y_skip_top	; skip lines to the top
+			suba	_ter_drw_y_skip_bottom	; skip lines to the bottom
+			sta	_ter_drw_lines_left
+
+			ldu	_ter_offset		; point u at data
+
+			;** Set u to point at last line of src data
+			lda	_ter_height
+			suba	_ter_drw_y_skip_top	; we're skipping this many lines, so dont
+							; include them in the fast-forward
+			deca				; want to go to start of last line, not
+							; past last byte - so, mul with one line less
+			ldb	_ter_width
+			mul				; d = total bytes to skip
+			leau	d,u			; u points at first byte of last line
+
+			;lbsr	dtc_skip_top_crop_lines	; adjust src as needed
+__dtc_exusd_new_row
+			;** Remap destination pages
+			lda	_ter_drw_y_loc		; y pos to draw at
+			lbsr	get_addr_start_of_line	; convert a into d and remap
+
+			ldx	_ter_drw_x_loc		; get x offset
+			leax	d,x			; add vert and horiz offsets
+			;** X now = Destination Byte
+
+			lda	_ter_drw_x_skip_left
+			leau	a,u			; push src forward if needed
+
+			;** Remap source pages
+			lbsr	dtc_adjust_src_both	; ensure u is mapped
+
+			;** Final preparations
+			lda	_ter_drw_counter	; number of bytes to draw
+__dtc_exusd_draw_line
+			ldb	,u+			; load source byte
+			beq	__dtc_exusd_dl_0	; don't write if zero
+			pshs	a			; save the byte count
+
+			;** Mask terrain byte
+
+			clra
+			bitb	#$0F			; test right pixel
+			bne	__dtc_exusd_post_right_pixel
+			ora	#$0F			; rhs mask lets bg through
+__dtc_exusd_post_right_pixel
+			bitb	#$F0			; test left pixel
+			bne	__dtc_exusd_post_left_pixel
+			ora	#$F0			; lhs mask lets bg through
+__dtc_exusd_post_left_pixel
+			anda	,x			; merge mask with bg
+			sta	,x			; write mask
+			orb	,x			; merge pixel with masked bg
+			stb	,x			; write merged pixel
+			puls	a
+__dtc_exusd_dl_0
+			leax	1,x			; move to next dest byte
+			lbsr	dtc_adjust_src_both	; ensure u is within range
+			deca				; decrease byte count
+			bne	__dtc_exusd_draw_line	; loop for new byte
+
+			lda	_ter_drw_x_skip_right
+			leau	a,u			; skip bytes to the right
+			inc	_ter_drw_y_loc		; point at next line	
+			
+			lda	_ter_width
+			lsla				; multiply reverse skip by two
+							; so we're doing two lines back
+							; (just drawn line, plus next line to draw)
+			nega				; make it negative
+			leau	a,u			; move src pointer
+
+			dec	_ter_drw_lines_left
+			bne	__dtc_exusd_new_row
+
+			rts
+;** end dtc_execute_upsidedown_mode
+
 ;** dtc_adjust_src_fwd
 ; This subroutine checks if the current source pointer is within the
 ; #Window_TerrainData page, and if not, it remaps and adjusts appropriately
@@ -312,6 +402,28 @@ __dtc_asf_1
 			puls	d
 			rts
 ;** end dtc_adjust_src_fwd
+
+;** dtc_adjust_src_both
+; This subroutine checks if the current source pointer is within the
+; #Window_TerrainData page, and if not, it remaps and adjusts appropriately
+dtc_adjust_src_both
+			pshs	d
+__dtc_asb_0
+			cmpu	#Window_TerrainData+$2000
+			blo	__dtc_asb_1
+			leau	-$2000,u
+			inc	Page_TerrainData
+			bra	__dtc_asb_0
+__dtc_asb_1
+			cmpu	#Window_TerrainData
+			bhs	__dtc_asb_2
+			leau	$2000,u
+			dec	Page_TerrainData
+			bra	__dtc_asb_1
+__dtc_asb_2
+			puls	d
+			rts
+;** end dtc_adjust_src_both
 
 ;** dtc_skip_top_crop_lines
 ; This subroutine skips over unneeded src bytes as specified by _ter_drw_y_skip_top
@@ -347,7 +459,7 @@ dtc_get_terrain_data
 			stb	_ter_drw_lines_left	; number of lines to be drawn
 			puls	d,x
 			rts
-;** end dtc_get_start_of_terrain_data
+;** end dtc_get_terrain_data
 
 ;** dtc_adjust_top_crop
 ; This subroutine checks the requested y draw location
