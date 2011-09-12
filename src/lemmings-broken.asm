@@ -60,12 +60,10 @@ _next_level_chunk
 			ldx	LevelTerrainStruct.PosLeft,y	; horizontal loc
 			ldb	LevelTerrainStruct.DrawFlags,y	; get draw mode
 			pshs	d
+			ldd	LevelTerrainStruct.ID,y	; y now = id
 			clra
-			ldb	LevelTerrainStruct.ID,y	; y now = id
 			tfr	d,y
 			puls	d
-			;cmpx	#707			; should be 767
-			;bhi	_nlc_post_draw
 
 			;** hacky test code
 			;ldy	#23			; terrain id

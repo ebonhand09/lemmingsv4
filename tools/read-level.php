@@ -59,7 +59,7 @@
     {
 	echo $xoff . PHP_EOL;
 	if ($xoff > 32767) { $xoff = $xoff - 65535; }
-    	$this->x_offset = floor($xoff / 2);
+    	$this->x_offset = floor($xoff / 2) - 16;
     }
     
     function adjustXOffset($adjust)
@@ -284,12 +284,12 @@
 	writeData($level->maxBashers);
 	writeData($level->maxMiners);
 	writeData($level->maxDiggers);
-	writeData(floor($level->screenStart/2), 2);
+	writeData(floor($level->screenStart/2)-16, 2);
 	writeData($level->graphicSet);
 	writeData($level->graphicSetExtension);
 	//writeData($level->totalObjects);
 	writeData(0,2); // hack - will fix when there's actually objects in the game
-	writeData($level->totalTerrain);
+	writeData($level->totalTerrain,2);
 	//writeData($level->totalSteel);
 	writeData(0,2); // hack - will fix when there's actually steel in the game
 	

@@ -111,7 +111,7 @@ __dtc_post_combined_upsidedown_black_mode
 
 			;** Check for nooverlap draw mode
 			lda	_ter_drw_mode
-			cmpa	#1			; Check for nooverlap mode
+			cmpa	#DRAW_NOOVERLAP		; Check for nooverlap mode
 			bne	__dtc_post_nooverlap_mode_check
 			lbsr	dtc_execute_nooverlap_mode
 			rts
@@ -119,7 +119,7 @@ __dtc_post_nooverlap_mode_check
 
 			;** Check for upsidedown draw mode
 			lda	_ter_drw_mode
-			cmpa	#2			; Check for upsidedown mode
+			cmpa	#DRAW_UPSIDEDOWN	; Check for upsidedown mode
 			bne	__dtc_post_upsidedown_mode_check
 			lbsr	dtc_execute_upsidedown_mode
 			rts
@@ -127,7 +127,7 @@ __dtc_post_upsidedown_mode_check
 			
 			;** Check for black draw mode
 			lda	_ter_drw_mode
-			cmpa	#4			; Check for black mode
+			cmpa	#DRAW_BLACK		; Check for black mode
 			bne	__dtc_post_black_mode_check
 			lbsr	dtc_execute_black_mode
 			rts

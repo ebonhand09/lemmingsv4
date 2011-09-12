@@ -167,6 +167,11 @@ GIME_BPP1	equ 0x00	;1 bit per pixel
 GIME_BPP2	equ 0x01	;2 bits per pixel
 GIME_BPP4	equ 0x02	;4 bits per pixel
 
+DRAW_NORMAL	equ 0x00	; Normal draw mode
+DRAW_NOOVERLAP	equ 0x01	; NoOverlap draw mode
+DRAW_UPSIDEDOWN	equ 0x02	; UpsideDown draw mode
+DRAW_BLACK	equ 0x04	; Black draw mode
+
 LevelStruct		STRUCT
 Title				RMB	32
 LemsToLetOut			RMB	1
@@ -181,7 +186,7 @@ MaxBuilders			RMB	1
 MaxBashers			RMB	1
 MaxMiners			RMB	1
 MaxDiggers			RMB	1
-ScreenStart			RMB	1
+ScreenStart			RMB	2
 GraphicSet			RMB	1
 GraphicSetEx			RMB	1
 TotalObjects			RMB	2

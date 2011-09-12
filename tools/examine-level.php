@@ -255,9 +255,9 @@
   foreach ($level->terrainArray as $terrain)
   {
       echo sprintf("ID: %s\t(%03s,%03s)", $terrain->id, $terrain->x_offset, $terrain->y_offset);
-      if ($terrain->notOverlap) { echo "\tNotOverlap: {$terrain->notOverlap}";}
-      if ($terrain->upsideDown) { echo "\tBlack: {$terrain->upsideDown}";}
-      if ($terrain->black) { echo "\tBlack: {$terrain->black}";}
+      echo ($terrain->notOverlap) ? "\tNotOverlap" : "\t          ";
+      echo ($terrain->upsideDown) ? "\tUpsideDown" : "\t          ";
+      echo ($terrain->black)      ? "\tBlack     " : "\t          ";
       echo PHP_EOL;
   }
 /* 
