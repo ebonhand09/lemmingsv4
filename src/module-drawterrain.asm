@@ -102,11 +102,11 @@ __dtc_post_normal_mode_check
 __dtc_post_combined_nooverlap_upsidedown_mode
 
 			;** Check for upsidedown/black combined
-			;lda	_ter_drw_mode
-			;cmpa	#6			; Check for combined upsidedown/black modes
-			;bne	__dtc_post_combined_upsidedown_black_mode
-			;lbsr	dtc_execute_combined_upsidedown_black_mode
-			;rts
+			lda	_ter_drw_mode
+			cmpa	#DRAW_UPSIDEDOWN|DRAW_BLACK	; Check for combined upsidedown/black modes
+			bne	__dtc_post_combined_upsidedown_black_mode
+			lbsr	dtc_execute_combined_upsidedown_black_mode
+			rts
 __dtc_post_combined_upsidedown_black_mode
 
 			;** Check for nooverlap draw mode
@@ -443,6 +443,95 @@ __dtc_exblk_dl_0
 
 			rts
 ;** end dtc_execute_black_mode
+
+;** dtc_execute_combined_upsidedown_black_mode
+; This subroutine handles drawing a terrain chunk with upsidedown special flag
+; It reads the src data in byte order but in a line-reversed manner e.g last line will be served
+; first. In all other respects, this routine is the same as dtc_execute_normal_mode
+dtc_execute_combined_upsidedown_black_mode
+			lda	_ter_width		; number of bytes to draw
+			suba	_ter_drw_x_skip_left	; skip bytes to the left
+			suba	_ter_drw_x_skip_right	; skip bytes to the right
+			sta	_ter_drw_counter	; draw this many bytes per line
+
+			lda	_ter_drw_lines_left	; number of lines to draw
+			suba	_ter_drw_y_skip_top	; skip lines to the top
+			suba	_ter_drw_y_skip_bottom	; skip lines to the bottom
+			sta	_ter_drw_lines_left
+
+			ldu	_ter_offset		; point u at data
+
+			;** Set u to point at last line of src data
+			lda	_ter_height
+			suba	_ter_drw_y_skip_top	; we're skipping this many lines, so dont
+							; include them in the fast-forward
+			deca				; want to go to start of last line, not
+							; past last byte - so, mul with one line less
+			ldb	_ter_width
+			mul				; d = total bytes to skip
+			leau	d,u			; u points at first byte of last line
+
+			;lbsr	dtc_skip_top_crop_lines	; adjust src as needed
+__dtc_excusblk_new_row
+			;** Remap destination pages
+			lda	_ter_drw_y_loc		; y pos to draw at
+			lbsr	get_addr_start_of_line	; convert a into d and remap
+
+			ldx	_ter_drw_x_loc		; get x offset
+			leax	d,x			; add vert and horiz offsets
+			;** X now = Destination Byte
+
+			lda	_ter_drw_x_skip_left
+			leau	a,u			; push src forward if needed
+
+			;** Remap source pages
+			lbsr	dtc_adjust_src_both	; ensure u is mapped
+
+			;** Final preparations
+			lda	_ter_drw_counter	; number of bytes to draw
+__dtc_excusblk_draw_line
+			ldb	,u+			; load source byte
+			beq	__dtc_excusblk_dl_0	; don't write if zero
+			pshs	a			; save the byte count
+
+			;** Mask terrain byte
+
+			clra
+			bitb	#$0F			; test right pixel
+			bne	__dtc_excusblk_post_right_pixel
+			ora	#$0F			; rhs mask lets bg through
+__dtc_excusblk_post_right_pixel
+			bitb	#$F0			; test left pixel
+			bne	__dtc_excusblk_post_left_pixel
+			ora	#$F0			; lhs mask lets bg through
+__dtc_excusblk_post_left_pixel
+			anda	,x			; merge mask with bg
+			sta	,x			; write mask
+			;orb	,x			; merge pixel with masked bg
+			;stb	,x			; write merged pixel
+			puls	a
+__dtc_excusblk_dl_0
+			leax	1,x			; move to next dest byte
+			lbsr	dtc_adjust_src_both	; ensure u is within range
+			deca				; decrease byte count
+			bne	__dtc_excusblk_draw_line	; loop for new byte
+
+			lda	_ter_drw_x_skip_right
+			leau	a,u			; skip bytes to the right
+			inc	_ter_drw_y_loc		; point at next line	
+			
+			lda	_ter_width
+			lsla				; multiply reverse skip by two
+							; so we're doing two lines back
+							; (just drawn line, plus next line to draw)
+			nega				; make it negative
+			leau	a,u			; move src pointer
+
+			dec	_ter_drw_lines_left
+			bne	__dtc_excusblk_new_row
+
+			rts
+;** end dtc_execute_combined_upsidedown_black_mode
 
 ;** dtc_adjust_src_fwd
 ; This subroutine checks if the current source pointer is within the
