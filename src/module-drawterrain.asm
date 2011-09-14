@@ -172,6 +172,14 @@ __dtc_post_offset_nooverlap_mode_check
 			lbsr	dtc_execute_offset_upsidedown_mode
 			rts
 __dtc_post_offset_upsidedown_mode_check
+			
+			;** Check for black draw mode
+			lda	_ter_drw_mode
+			cmpa	#DRAW_BLACK		; Check for black mode
+			bne	__dtc_post_offset_black_mode_check
+			lbsr	dtc_execute_offset_black_mode
+			rts
+__dtc_post_offset_black_mode_check
 
 			rts				; Fallthrough safety
 ;** END OFFSET MODES
@@ -794,6 +802,97 @@ __dtc_exblk_dl_0
 
 			rts
 ;** end dtc_execute_black_mode
+
+;** dtc_execute_offset_black_mode
+; OFFSET VARIETY
+; This subroutine handles drawing a terrain chunk in black draw mode
+; It's a variant of dtc_execute_normal_mode that doesn't merge in the terrain chunk data, but only
+; applies the background mask. This could probably be improved speed-wise
+dtc_execute_offset_black_mode
+			dec	_ter_drw_x_skip_left	; OFFSET Mode
+			lda	_ter_width		; number of bytes to draw
+			suba	_ter_drw_x_skip_left	; skip bytes to the left
+			suba	_ter_drw_x_skip_right	; skip bytes to the right
+			sta	_ter_drw_counter	; draw this many bytes per line
+
+			lda	_ter_drw_lines_left	; number of lines to draw
+			suba	_ter_drw_y_skip_top	; skip lines to the top
+			suba	_ter_drw_y_skip_bottom	; skip lines to the bottom
+			sta	_ter_drw_lines_left
+
+			ldu	_ter_offset		; point u at data
+			lbsr	dtc_skip_top_crop_lines	; adjust src as needed
+__dtc_oexblk_new_row
+			clr	_ter_drw_tmp
+			;** Remap destination pages
+			lda	_ter_drw_y_loc		; y pos to draw at
+			lbsr	get_addr_start_of_line	; convert a into d and remap
+
+			ldx	_ter_drw_x_loc		; get x offset
+			leax	d,x			; add vert and horiz offsets
+			;** X now = Destination Byte
+
+			lda	_ter_drw_x_skip_left
+			leau	a,u			; push src forward if needed
+
+			;** Remap source pages
+			lbsr	dtc_adjust_src_fwd	; ensure u is mapped
+
+			;** Final preparations
+			lda	_ter_drw_counter	; number of bytes to draw
+__dtc_oexblk_draw_line
+			pshs	a
+			ldd	,u+			; load source byte
+			tst	_ter_drw_tmp
+			bne	__dtc_oexblk_dl_skip_first_byte_adjust
+			clra
+			dec	_ter_drw_tmp
+__dtc_oexblk_dl_skip_first_byte_adjust
+			lsra
+			rorb
+			lsra
+			rorb
+			lsra
+			rorb
+			lsra
+			rorb
+
+			lda	,s
+			deca
+			bne	__dtc_oexblk_dl_skip_last_byte_adjust
+			andb	#$F0
+__dtc_oexblk_dl_skip_last_byte_adjust
+			tstb
+			beq	__dtc_oexblk_dl_0	; don't write if zero
+
+			;** Mask terrain byte
+
+			clra
+			bitb	#$0F			; test right pixel
+			bne	__dtc_oexblk_post_right_pixel
+			ora	#$0F			; rhs mask lets bg through
+__dtc_oexblk_post_right_pixel
+			bitb	#$F0			; test left pixel
+			bne	__dtc_oexblk_post_left_pixel
+			ora	#$F0			; lhs mask lets bg through
+__dtc_oexblk_post_left_pixel
+			anda	,x			; merge mask with bg
+			sta	,x			; write mask
+__dtc_oexblk_dl_0
+			puls	a
+			leax	1,x			; move to next dest byte
+			lbsr	dtc_adjust_src_fwd	; ensure u is within range
+			deca				; decrease byte count
+			bne	__dtc_oexblk_draw_line	; loop for new byte
+
+			lda	_ter_drw_x_skip_right
+			leau	a,u			; skip bytes to the right
+			inc	_ter_drw_y_loc		; point at next line	
+			dec	_ter_drw_lines_left
+			bne	__dtc_oexblk_new_row
+
+			rts
+;** end dtc_execute_offset_black_mode
 
 ;** dtc_execute_combined_upsidedown_black_mode
 ; This subroutine handles drawing a terrain chunk with upsidedown special flag
