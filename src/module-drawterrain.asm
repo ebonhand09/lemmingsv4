@@ -15,17 +15,18 @@ _ter_drw_y_skip_bottom	RMB	1
 _ter_drw_x_loc		RMB	2
 _ter_drw_x_skip_left	RMB	1
 _ter_drw_x_skip_right	RMB	1
+_ter_drw_x_pixel_offset	RMB	1
 _ter_drw_mode		RMB	1
+_ter_drw_tmp		RMB	1
 			ENDSECTION
 
 			SECTION	module_drawterrain
 draw_terrain_chunk	EXPORT
 
-
 ;*** draw_terrain_chunk
 ;	Write terrain graphic data to the virtual screen
 ; ENTRY:	a = vertical offset (in pixels)
-;		x = horizontal offset (in bytes)
+;		x = horizontal offset (in pixels)
 ;		y = terrain_id to be drawn
 ;		b = draw mode (bitmask)
 
@@ -40,10 +41,17 @@ draw_terrain_chunk
 			clr	_ter_drw_y_skip_bottom
 			clr	_ter_drw_x_skip_left
 			clr	_ter_drw_x_skip_right
+			clr	_ter_drw_x_pixel_offset
 
 			;** Reset TerrainData mapping
 			lda	#Block_TerrainData
 			sta	Page_TerrainData
+
+			;** Adjust X location from pixels to bytes
+			; and calculate even/odd
+_dtc_test_point		lbsr	dtc_adjust_pixels_to_bytes
+
+			;** From this point forward, all horizontals are in bytes
 
 			;** Put Terrain Data into local variables
 			lbsr	dtc_get_terrain_data
@@ -84,7 +92,11 @@ __dtc_post_early_bail_2
 			bge	__dtc_post_early_bail_3
 			rts
 __dtc_post_early_bail_3
-				
+
+			;** Check if we're doing the normal or offset draw
+			
+			tst	_ter_drw_x_pixel_offset
+			bne	__dtc_offset_modes
 
 			;** If we're in normal draw mode, go draw and go home
 			tst	_ter_drw_mode
@@ -134,6 +146,19 @@ __dtc_post_upsidedown_mode_check
 __dtc_post_black_mode_check
 
 			rts				; Fallthrough safety
+;** END NORMAL MODES
+;** START OFFSET MODES
+__dtc_offset_modes
+
+			;** If we're in normal draw mode, go draw and go home
+			tst	_ter_drw_mode
+			bne	__dtc_post_offset_normal_mode_check
+			lbsr	dtc_execute_offset_normal_mode
+			rts
+__dtc_post_offset_normal_mode_check
+
+			rts				; Fallthrough safety
+;** END OFFSET MODES
 ;** end draw_terrain_chunk
 
 ;** dtc_execute_normal_mode
@@ -205,6 +230,100 @@ __dtc_exnorm_dl_0
 
 			rts
 ;** end dtc_execute_normal_mode
+
+;** dtc_execute_offset_normal_mode
+; OFFSET VARIETY
+; This subroutine handles drawing a terrain chunk with no special mode considerations
+; e.g no masking of any kind. It still makes use of postional adjustments such as
+; top-cropping, left-cropping, right-cropping and bottom-cropping
+dtc_execute_offset_normal_mode
+			dec	_ter_drw_x_skip_left
+			lda	_ter_width		; number of bytes to draw
+			suba	_ter_drw_x_skip_left	; skip bytes to the left
+			suba	_ter_drw_x_skip_right	; skip bytes to the right
+			sta	_ter_drw_counter	; draw this many bytes per line
+
+			lda	_ter_drw_lines_left	; number of lines to draw
+			suba	_ter_drw_y_skip_top	; skip lines to the top
+			suba	_ter_drw_y_skip_bottom	; skip lines to the bottom
+			sta	_ter_drw_lines_left
+
+			ldu	_ter_offset		; point u at data
+			lbsr	dtc_skip_top_crop_lines	; adjust src as needed
+__dtc_oexnorm_new_row
+			clr	_ter_drw_tmp
+			;** Remap destination pages
+			lda	_ter_drw_y_loc		; y pos to draw at
+			lbsr	get_addr_start_of_line	; convert a into d and remap
+
+			ldx	_ter_drw_x_loc		; get x offset
+			leax	d,x			; add vert and horiz offsets
+			;** X now = Destination Byte
+
+			lda	_ter_drw_x_skip_left
+			leau	a,u			; push src forward if needed
+
+
+			;** Remap source pages
+			lbsr	dtc_adjust_src_fwd	; ensure u is mapped
+
+			;** Final preparations
+			lda	_ter_drw_counter	; number of bytes to draw
+__dtc_oexnorm_draw_line
+			pshs	a			; save the byte count
+			ldd	,u+			; load source byte
+			tst	_ter_drw_tmp
+			bne	__dtc_oexnorm_dl_skip_first_byte_adjust
+			clra
+			dec	_ter_drw_tmp
+__dtc_oexnorm_dl_skip_first_byte_adjust
+			lsra
+			rorb
+			lsra
+			rorb
+			lsra
+			rorb
+			lsra
+			rorb
+
+			lda	,s
+			deca
+			bne	__dtc_oexnorm_dl_skip_last_byte_adjust
+			andb	#$F0
+__dtc_oexnorm_dl_skip_last_byte_adjust
+			tstb
+			beq	__dtc_oexnorm_dl_0	; don't write if zero
+
+			;** Mask terrain byte
+
+			clra
+			bitb	#$0F			; test right pixel
+			bne	__dtc_oexnorm_post_right_pixel
+			ora	#$0F			; rhs mask lets bg through
+__dtc_oexnorm_post_right_pixel
+			bitb	#$F0			; test left pixel
+			bne	__dtc_oexnorm_post_left_pixel
+			ora	#$F0			; lhs mask lets bg through
+__dtc_oexnorm_post_left_pixel
+			anda	,x			; merge mask with bg
+			sta	,x			; write mask
+			orb	,x			; merge pixel with masked bg
+			stb	,x			; write merged pixel
+			puls	a
+__dtc_oexnorm_dl_0
+			leax	1,x			; move to next dest byte
+			lbsr	dtc_adjust_src_fwd	; ensure u is within range
+			deca				; decrease byte count
+			bne	__dtc_oexnorm_draw_line	; loop for new byte
+
+			lda	_ter_drw_x_skip_right
+			leau	a,u			; skip bytes to the right
+			inc	_ter_drw_y_loc		; point at next line	
+			dec	_ter_drw_lines_left
+			bne	__dtc_oexnorm_new_row
+
+			rts
+;** end dtc_execute_offset_normal_mode
 
 ;** dtc_execute_nooverlap_mode
 ; This subroutine handles drawing a terrain chunk with nooverlap special mode
@@ -682,5 +801,28 @@ __dtc_abc_0
 			puls	d,x
 			rts
 ;** end dtc_adjust_bottom_crop
+
+;** dtc_adjust_pixels_to_bytes
+; This subroutine converts the X position figure from pixels to bytes, and stores whether
+; the destination is byte-aligned or pixel-offset in _ter_drw_x_pixel_offset
+dtc_adjust_pixels_to_bytes
+			pshs	d			; save previous data
+			clr	_ter_drw_x_pixel_offset	; clear previous setting
+			ldd	_ter_drw_x_loc		; get the x loc in pixels
+			asra				; divide by two and..
+			rorb				; .. capture the remainder
+			bcc	_dtc_ap2b_1		; remainder? brif not
+			dec	_ter_drw_x_pixel_offset	; if remainder, set flag
+_dtc_ap2b_1
+			;tst	_ter_drw_x_loc		; test unshifted value
+			;bpl	_dtc_ap2b_2		; positive, no adjust needed
+			;inc	_ter_drw_x_pixel_offset ; reverse remainder
+							; ff + 1 = 00 + 1 = 01
+							; test pix offset for 0/non-0
+_dtc_ap2b_2
+			std	_ter_drw_x_loc		; store shifted value
+			puls	d			; restore previous data
+			rts
+;** end dtc_adjust_pixels_to_bytes
 
 			ENDSECTION
