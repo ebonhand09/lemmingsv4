@@ -66,11 +66,11 @@ _next_level_chunk
 			puls	d
 
 			;** hacky test code
-			ldy	#23			; terrain id
-			lda	#0			; 1px top
-			ldx	#0			; 1px left
-			ldb	#0			; normal draw
-			lbsr	draw_terrain_chunk
+			;ldy	#23			; terrain id
+			;lda	#0			; 1px top
+			;ldx	#0			; 1px left
+			;ldb	#0			; normal draw
+			;lbsr	draw_terrain_chunk
 
 			;ldy	#23			; terrain id
 			;lda	#0			; top
@@ -78,11 +78,11 @@ _next_level_chunk
 			;ldb	#1
 			;lbsr	draw_terrain_chunk
 
-			ldy	#21			; terrain id
-			lda	#0			; 1px top
-			ldx	#1			; 1px left
-			ldb	#6			; normal draw
-			lbsr	draw_terrain_chunk
+			;ldy	#21			; terrain id
+			;lda	#0			; 1px top
+			;ldx	#1			; 1px left
+			;ldb	#6			; normal draw
+			;lbsr	draw_terrain_chunk
 
 			;ldy	#23			; terrain id
 			;lda	#24			; top
@@ -94,9 +94,9 @@ _next_level_chunk
 			;lda	#15			; top
 			;ldx	#8			; left
 			;ldb	#4			; black
-			;lbsr	draw_terrain_chunk
+			lbsr	draw_terrain_chunk
 
-			jmp	_nlc_level_complete
+			;jmp	_nlc_level_complete
 
 _nlc_post_draw		puls	y			; y = chunk just drawn
 			leay	sizeof{LevelTerrainStruct},y ; move to next chunk
@@ -108,7 +108,7 @@ _nlc_post_draw		puls	y			; y = chunk just drawn
 _nlc_level_complete
 			lbsr	setup_interrupts	; Get things organised
 
-			;ldx	_pc_start_loc		; offset to view
+			ldx	_pc_start_loc		; offset to view
 			ldx	#0
 			
 @_do_loop
@@ -116,7 +116,7 @@ _nlc_level_complete
 			pshs	x
 			lbsr	copy_virt_to_phys	; render it to gfx
 			puls	x
-			;leax	2,x
+			leax	2,x
 			cmpx	#640
 			blo	@_do_loop
 @_do_other_loop
@@ -124,7 +124,7 @@ _nlc_level_complete
 			pshs	x
 			lbsr	copy_virt_to_phys	; render it to gfx
 			puls	x
-			;leax	-2,x
+			leax	-2,x
 			cmpx	#0
 			bhi	@_do_other_loop
 			jmp	@_do_loop

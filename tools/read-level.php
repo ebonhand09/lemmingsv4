@@ -59,7 +59,7 @@
     {
 	echo $xoff . PHP_EOL;
 	if ($xoff > 32767) { $xoff = $xoff - 65535; }
-    	$this->x_offset = floor($xoff / 2) - 16;
+    	$this->x_offset = floor($xoff) - 16;
     }
     
     function adjustXOffset($adjust)
