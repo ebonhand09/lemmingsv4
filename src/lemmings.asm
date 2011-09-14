@@ -69,7 +69,7 @@ _next_level_chunk
 			ldy	#23			; terrain id
 			lda	#0			; 1px top
 			ldx	#1			; 1px left
-			ldb	#1			; normal draw
+			ldb	#2			; normal draw
 			lbsr	draw_terrain_chunk
 
 			;ldy	#23			; terrain id
@@ -81,7 +81,7 @@ _next_level_chunk
 			ldy	#23			; terrain id
 			lda	#24			; 1px top
 			ldx	#0			; 1px left
-			ldb	#1			; normal draw
+			ldb	#2			; normal draw
 			lbsr	draw_terrain_chunk
 
 			;ldy	#23			; terrain id
