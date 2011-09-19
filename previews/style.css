@@ -1,0 +1,12 @@
+table.terrain {
+	padding: 0px;
+	margin: 0px;
+}
+table.terrain tr {
+	line-height: 2px;
+}
+table.terrain td {
+	line-height:5px;
+	width: 2px;
+	overflow: hidden;
+}
