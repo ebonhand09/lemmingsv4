@@ -47,12 +47,10 @@ function writeString($data, $bytes, $handle = NULL)
 	fwrite($handle, $data, $bytes);
 }
 
-$tileset = 0;
-$ground_file = "/home/david/projects/lemmings/resources/dat/ground".$tileset.".dat";
-$terrain_file = "/home/david/projects/lemmings/resources/dat/terrain".$tileset.".dat";
-$adjustment_file = "/home/david/projects/lemmings/resources/terrain-adjustment".$tileset.".php";
-$output_dir = "/home/david/projects/lemmings/bin/gfx/extracted_terrain/";
-$lookup_table = "/home/david/projects/lemmings/include/terrain-offset-table.asm";
+
+$ground_file = "/home/david/projects/lemmings/resources/dat/ground4.dat";
+$terrain_file = "/home/david/projects/lemmings/resources/dat/terrain4.dat";
+//$objects_file = "/home/david/projects/lemmings/resources/dat/objects1.dat";
 
 $number_of_chunks = 64;
 
@@ -114,67 +112,37 @@ for ($chunk_index = 0; $chunk_index < $number_of_chunks; $chunk_index++)
 	}
 	$chunks[$chunk_index]['def'] = $chunk_def;
 	$chunks[$chunk_index]['data'] = $data;
-	$chunks[$chunk_index]['left'] = 0;
-	$chunks[$chunk_index]['right'] = 0;
 }
+$html = '<link rel="stylesheet" media="screen" href="terrain4.css"/>';
+$html .= '<link rel="stylesheet" media="screen" href="style.css"/>';
 
 for ($chunk_index = 0; $chunk_index < $number_of_chunks; $chunk_index++)
 {
+	$html .= "Chunk Number : " . $chunk_index . "<br />" . PHP_EOL;
+	$html .= '<table class="terrain" border="0" cellspacing="0" cellpadding="0">';
+
 	$chunk_def = $chunks[$chunk_index]['def'];
 	$data = $chunks[$chunk_index]['data'];
 
-	$least_left = 999;
-	$most_right = 000;
-
 	for ($y = 0; $y < $chunk_def['height_px']; $y++)
 	{
+		$html .= PHP_EOL . '<tr>' . PHP_EOL;
 		for ($x = 0; $x < $chunk_def['width_bits']; $x++)
 		{
 			$color = $data[$y][$x];
-			if (($color != 0) && ($x < $least_left))
-			{
-				$least_left = $x;
-			}
-			if (($color != 0) && ($x > $most_right))
-			{
-				$most_right = $x;
-			}
+			//imagesetpixel($im, $x, $y, $color);
+
+			$style = "color-" . $color;
+
+			$html .= '<td class="' . $style . '">&nbsp;</td>';
 		}
+		$html .= PHP_EOL . '</tr>' . PHP_EOL;
+
 	}
-	$chunks[$chunk_index]['left'] = $least_left;
-	$chunks[$chunk_index]['right'] = $most_right;
+
+	$html .= '</table>';
 }
-$counter = 0;
-echo ";; Terrain Lookup Table";
-foreach ($chunks as $index => $chunk)
-{
-	if ($chunk['left'] % 2) $chunk['left']--;	
-	if ($chunk['right'] % 2) $chunk['right']++;
-	$total_nibbles = $chunk['right'] - $chunk['left'];
-	$total_bytes = $total_nibbles / 2;
-	$left_start_byte = $chunk['left'] / 2;
-	$left_start_nibble = $chunk['left'];
-	//printf("Chunk %s  \t Left %s \t Right %s \t Width %s \t Correction Nibble %s\n", $index, $chunk['left'], $chunk['right'], $total_nibbles, ($total_nibbles % 2));
-
-	$filename = $output_dir . sprintf("ter_%s_%02s.dat", $tileset, $index);
-	//echo $output_dir.$filename . PHP_EOL;
-	$chunk_file = fopen($filename, 'wb');
-
-	$line_bytes = '';
-	foreach ($chunk['data'] as $line_number => $data)
-	{
-		for ($k = 0; $k < $total_nibbles; $k = $k + 2)
-		{
-			$line_bytes .= chr(($data[$k+$left_start_nibble] << 4) + ($data[$k+1+$left_start_nibble]));
-		}
-	}
-	fputs($chunk_file, $line_bytes);
-	fclose($chunk_file);
-	$total_size = $total_bytes*$chunk['def']['height_px'];
-	$counter += $total_size;
-	echo sprintf("%s\t\t\t\tFDB\t$%04X+TerrainData\n", "Ter_".$tileset."_".$index, $counter);
-	echo sprintf("\t\t\t\tFCB\t%02s,%02s\n", $total_bytes, $chunk['def']['height_px']);
-
-}
-
+file_put_contents('/home/david/projects/lemmings/tools/terrain-set-4.html', $html);
+//imagegif($im, "/home/david/projects/lemmings/tools/chunk.gif");
+echo "Done" . PHP_EOL;
 
