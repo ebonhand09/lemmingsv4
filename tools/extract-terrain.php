@@ -47,7 +47,7 @@ function writeString($data, $bytes, $handle = NULL)
 	fwrite($handle, $data, $bytes);
 }
 
-$tileset = 0;
+$tileset = 1;
 $ground_file = "/home/david/projects/lemmings/resources/dat/ground".$tileset.".dat";
 $terrain_file = "/home/david/projects/lemmings/resources/dat/terrain".$tileset.".dat";
 $adjustment_file = "/home/david/projects/lemmings/resources/terrain-adjustment".$tileset.".php";
@@ -142,16 +142,16 @@ for ($chunk_index = 0; $chunk_index < $number_of_chunks; $chunk_index++)
 		}
 	}
 	$chunks[$chunk_index]['left'] = $least_left;
-	$chunks[$chunk_index]['right'] = $most_right;
+	$chunks[$chunk_index]['right'] = $most_right+1;
 }
 $counter = 0;
 echo ";; Terrain Lookup Table" . PHP_EOL;
 foreach ($chunks as $index => $chunk)
 {
-	if ($chunk['left'] % 2) $chunk['left']--;	
-	if ($chunk['right'] % 2) $chunk['right']++;
 	$total_nibbles = $chunk['right'] - $chunk['left'];
-	$total_bytes = $total_nibbles / 2;
+	if ($chunk['left'] % 2) $chunk['left']--;	
+	if ($chunk['right'] % 2)  $chunk['right']++;
+	$total_bytes = ceil($total_nibbles / 2);
 	$left_start_byte = $chunk['left'] / 2;
 	$left_start_nibble = $chunk['left'];
 	//printf("Chunk %s  \t Left %s \t Right %s \t Width %s \t Correction Nibble %s\n", $index, $chunk['left'], $chunk['right'], $total_nibbles, ($total_nibbles % 2));
