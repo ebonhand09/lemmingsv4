@@ -195,27 +195,27 @@ set_palette
 !       	        lda     ,Y+
 			sta	,X+
 			incb
-			cmpb    #15
+			cmpb    #16
 			bne	<
 			
 			rts
                                 
 _palette_data
-			FCB	%00000000	; 0000	- Black
-			FCB	%00011000	; 0001	- Hair	(Light blue)
-			FCB	%00111100	; 0010	- Skin	(Pink)
-			FCB	%00001111	; 0011	- Robe	(Blue)
-			FCB	%00000100	; 0100	- V.Dark Red
-			FCB	%00100000	; 0101	- Red
-			FCB	%00100010	; 0110	- Brown
-			FCB	%00110101	; 0111	- Fugorange
-			FCB	%00000010	; 1000	- Dark Green
-			FCB	%00010100	; 1001	- Light Green
-			FCB	%00000111	; 1010	- Grey
-			FCB	%00101010	; 1011	- Purple
-			FCB	%00000000	; 1100	- Unspecified
-			FCB	%00000000	; 1101	- Unspecified
-			FCB	%00000000	; 1110	- Unspecified
-			FCB	%00000000	; 1111	- Unspecified / System
+			FCB	%00000000	; 0000	- Black		#000000
+			FCB	%00111111	; 0001	- White		#FFFFFF
+			FCB	%00010000	; 0010	- Mid-Green	#00AA00
+			FCB	%00001111	; 0011	- Off-Blue	#5555FF
+			FCB	%00100111	; 0100	- Off-Red	#FF5555
+			FCB	%00110111	; 0101	- Orange?	#FFFF55
+			FCB	%00111000	; 0110	- Light Grey	#AAAAAA
+			FCB	%00110100	; 0111	- Duplicate of 8
+			FCB	%00110100	; 1000	-		#FFAA00
+			FCB	%00100010	; 1001	-		#AA5500
+			FCB	%00100000	; 1010	-		#AA0000
+			FCB	%00000100	; 1011	-		#550000
+			FCB	%00000111	; 1100	-		#555555
+			FCB	%00101010	; 1101	-		#AA55AA
+			FCB	%00010100	; 1110	-		#55AA00 
+			FCB	%00000010	; 1111	-		#005500
 
 			ENDSECTION

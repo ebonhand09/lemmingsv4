@@ -145,7 +145,7 @@ for ($chunk_index = 0; $chunk_index < $number_of_chunks; $chunk_index++)
 	$chunks[$chunk_index]['right'] = $most_right;
 }
 $counter = 0;
-echo ";; Terrain Lookup Table";
+echo ";; Terrain Lookup Table" . PHP_EOL;
 foreach ($chunks as $index => $chunk)
 {
 	if ($chunk['left'] % 2) $chunk['left']--;	
@@ -171,9 +171,9 @@ foreach ($chunks as $index => $chunk)
 	fputs($chunk_file, $line_bytes);
 	fclose($chunk_file);
 	$total_size = $total_bytes*$chunk['def']['height_px'];
+	echo sprintf("%s\t\t\t\tFDB\t$%04X+TerrainData\n", "Ter_".$tileset."_".sprintf("%02s", $index), $counter);
+	echo sprintf("\t\t\t\t\tFCB\t%02s,%02s\n", $total_bytes, $chunk['def']['height_px']);
 	$counter += $total_size;
-	echo sprintf("%s\t\t\t\tFDB\t$%04X+TerrainData\n", "Ter_".$tileset."_".$index, $counter);
-	echo sprintf("\t\t\t\tFCB\t%02s,%02s\n", $total_bytes, $chunk['def']['height_px']);
 
 }
 

@@ -12,22 +12,22 @@ lemmings_srcs := lemmings.asm module-gfx.asm module-drawterrain.asm module-inter
 extra_srcs := loader_stage1.asm loader_stage2.asm
 
 # terrain / level data
-terrain_0_srcs := ter_0_00.xpm ter_0_01.xpm ter_0_02.xpm ter_0_03.xpm ter_0_04.xpm ter_0_05.xpm \
-	ter_0_06.xpm ter_0_07.xpm ter_0_08.xpm ter_0_09.xpm ter_0_10.xpm ter_0_11.xpm ter_0_12.xpm \
-	ter_0_13.xpm ter_0_14.xpm ter_0_15.xpm ter_0_16.xpm ter_0_17.xpm ter_0_18.xpm ter_0_19.xpm \
-	ter_0_20.xpm ter_0_21.xpm ter_0_22.xpm ter_0_23.xpm ter_0_24.xpm ter_0_25.xpm ter_0_26.xpm \
-	ter_0_27.xpm ter_0_28.xpm ter_0_29.xpm ter_0_30.xpm ter_0_31.xpm ter_0_32.xpm ter_0_33.xpm \
-	ter_0_34.xpm ter_0_35.xpm ter_0_36.xpm ter_0_37.xpm ter_0_38.xpm ter_0_39.xpm ter_0_40.xpm \
-	ter_0_41.xpm ter_0_42.xpm ter_0_43.xpm ter_0_44.xpm ter_0_45.xpm ter_0_46.xpm ter_0_47.xpm \
-	ter_0_48.xpm ter_0_49.xpm
-	
+terrain_0_objs := ter_0_00.dat ter_0_01.dat ter_0_02.dat ter_0_03.dat ter_0_04.dat ter_0_05.dat \
+	ter_0_06.dat ter_0_07.dat ter_0_08.dat ter_0_09.dat ter_0_10.dat ter_0_11.dat ter_0_12.dat \
+	ter_0_13.dat ter_0_14.dat ter_0_15.dat ter_0_16.dat ter_0_17.dat ter_0_18.dat ter_0_19.dat \
+	ter_0_20.dat ter_0_21.dat ter_0_22.dat ter_0_23.dat ter_0_24.dat ter_0_25.dat ter_0_26.dat \
+	ter_0_27.dat ter_0_28.dat ter_0_29.dat ter_0_30.dat ter_0_31.dat ter_0_32.dat ter_0_33.dat \
+	ter_0_34.dat ter_0_35.dat ter_0_36.dat ter_0_37.dat ter_0_38.dat ter_0_39.dat ter_0_40.dat \
+	ter_0_41.dat ter_0_42.dat ter_0_43.dat ter_0_44.dat ter_0_45.dat ter_0_46.dat ter_0_47.dat \
+	ter_0_48.dat ter_0_49.dat	
+
+
+
 level_srcs := 0000.dat
 
-terrain_0_objs := $(terrain_0_srcs:%.xpm=%.dat)
 level_objs := $(level_srcs:%.dat=%.lvl)
 
-terrain_0_srcs := $(addprefix resources/gfx/terrain/,$(terrain_0_srcs))
-terrain_0_objs := $(addprefix bin/gfx/terrain/,$(terrain_0_objs))
+terrain_0_objs := $(addprefix bin/gfx/extracted_terrain/,$(terrain_0_objs))
 level_srcs := $(addprefix resources/lvl/,$(level_srcs))
 level_objs := $(addprefix bin/lvl/,$(level_objs))
 
@@ -64,7 +64,7 @@ loader_stage2.rawbin lemmings.map
 	rm -f *.list
 	rm -f src/*.list
 	rm -f src/*.o
-	rm -f bin/gfx/terrain/*.dat
+	rm -f bin/gfx/extracted_terrain/*.dat
 	rm -f bin/gfx/*.bin
 	rm -f bin/lvl/*.lvl
 	rm -f include/terrain-offset-table.asm
@@ -81,14 +81,14 @@ loader_stage2.rawbin lemmings.map
 bin/lvl/%.lvl: $(level_srcs) tools/read-level.php
 	tools/read-level.php $(filter %.dat, $<) $@
 	
-include/terrain-offset-table.asm: $(terrain_0_srcs)
-	tools/build-terrain-table.php > $@
+include/terrain-offset-table.asm: 
+	tools/extract-terrain.php > $@
 	
 bin/gfx/terrain0.bin: $(terrain_0_objs)
 	cat $^ > $@
 
-bin/gfx/terrain/%.dat: resources/gfx/terrain/%.xpm tools/pal-terrain-0.php 
-	tools/xpm2raw.php $(filter %.xpm, $<) $@ pal-terrain-0.php
+bin/gfx/terrain/%.dat: tools/extract.terrain.php include/terrain-offset-table.asm
+#	tools/xpm2raw.php $(filter %.xpm, $<) $@ pal-terrain-0.php
 	
 .PHONY: run
 run:	all
