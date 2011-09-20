@@ -105,13 +105,14 @@ __dtc_post_early_bail_3
 			rts
 __dtc_post_normal_mode_check
 
-			;** Check for nooverlap/upsidedown combined
-			;lda	_ter_drw_mode
-			;cmpa	#3			; Check for combined nooverlap/upsidedown modes
-			;bne	__dtc_post_combined_nooverlap_upsidedown_mode
-			;lbsr	dtc_execute_combined_nooverlap_upsidedown_mode
-			;rts
-__dtc_post_combined_nooverlap_upsidedown_mode
+			;** Check for upsidedown/nooverlap combined
+			lda	_ter_drw_mode
+			cmpa	#DRAW_UPSIDEDOWN|DRAW_NOOVERLAP	; Check for combined nooverlap/upsidedown modes
+			bne	__dtc_post_combined_upsidedown_nooverlap_mode
+			lbsr	dtc_execute_combined_upsidedown_nooverlap_mode
+			;lbsr	dtc_execute_upsidedown_mode
+			rts
+__dtc_post_combined_upsidedown_nooverlap_mode
 
 			;** Check for upsidedown/black combined
 			lda	_ter_drw_mode
@@ -156,6 +157,15 @@ __dtc_offset_modes
 			lbsr	dtc_execute_offset_normal_mode
 			rts
 __dtc_post_offset_normal_mode_check
+
+			;** Check for upsidedown/nooverlap combined
+			lda	_ter_drw_mode
+			cmpa	#DRAW_UPSIDEDOWN|DRAW_NOOVERLAP	; Check for combined nooverlap/upsidedown modes
+			bne	__dtc_post_offset_combined_upsidedown_nooverlap_mode
+			lbsr	dtc_execute_offset_combined_upsidedown_nooverlap_mode
+			;lbsr	dtc_execute_offset_upsidedown_mode
+			rts
+__dtc_post_offset_combined_upsidedown_nooverlap_mode
 
 			;** Check for upsidedown/black combined
 			lda	_ter_drw_mode
@@ -901,6 +911,232 @@ __dtc_oexblk_dl_0
 
 			rts
 ;** end dtc_execute_offset_black_mode
+
+;** dtc_execute_combined_upsidedown_nooverlap_mode
+; This subroutine handles drawing a terrain chunk with upsidedown and nooverlap special modes
+; If the destination half-byte is zero, the half-byte from src will be written
+dtc_execute_combined_upsidedown_nooverlap_mode
+			lda	_ter_width		; number of bytes to draw
+			suba	_ter_drw_x_skip_left	; skip bytes to the left
+			suba	_ter_drw_x_skip_right	; skip bytes to the right
+			sta	_ter_drw_counter	; draw this many bytes per line
+
+			lda	_ter_drw_lines_left	; number of lines to draw
+			suba	_ter_drw_y_skip_top	; skip lines to the top
+			suba	_ter_drw_y_skip_bottom	; skip lines to the bottom
+			sta	_ter_drw_lines_left
+
+			ldu	_ter_offset		; point u at data
+
+			;** Set u to point at last line of src data
+			lda	_ter_height
+			suba	_ter_drw_y_skip_top	; we're skipping this many lines, so
+							; don't include them in the fast-forward
+			deca				; move to start of last line, not past it
+
+			ldb	_ter_width
+			mul				; d = total bytes to skip
+			leau	d,u			; u points to first byte of last line
+
+
+			;lbsr	dtc_skip_top_crop_lines	; adjust src as needed
+__dtc_excusdnoov_new_row
+			;** Remap destination pages
+			lda	_ter_drw_y_loc		; y pos to draw at
+			lbsr	get_addr_start_of_line	; convert a into d and remap
+
+			ldx	_ter_drw_x_loc		; get x offset
+			leax	d,x			; add vert and horiz offsets
+			;** X now = Destination Byte
+
+			lda	_ter_drw_x_skip_left
+			leau	a,u			; push src forward if needed
+
+			;** Remap source pages
+			lbsr	dtc_adjust_src_fwd	; ensure u is mapped
+
+			;** Final preparations
+			lda	_ter_drw_counter	; number of bytes to draw
+__dtc_excusdnoov_draw_line
+			ldb	,u+			; load source byte
+			beq	__dtc_excusdnoov_dl_0	; don't write if zero
+			pshs	a			; save the byte count
+
+			;** Check Destination byte, and mask as appropriate
+			lda	,x			; get background byte
+			beq	__dtc_excusdnoov_write_byte	; if background empty, just write
+			bita	#$0F			; check bg rhs pixel
+			beq	__dtc_excusdnoov_post_bg_right_pixel	; empty = no change
+			andb	#$F0			; clear rhs pixel
+__dtc_excusdnoov_post_bg_right_pixel
+			bita	#$F0			; check bg lhs pixel
+			beq	__dtc_excusdnoov_post_bg_left_pixel		; empty = no change
+			andb	#$0F			; clear lhs pixel
+__dtc_excusdnoov_post_bg_left_pixel
+			
+			;** Mask terrain byte
+
+			clra
+			bitb	#$0F			; test right pixel
+			bne	__dtc_excusdnoov_post_right_pixel
+			ora	#$0F			; rhs mask lets bg through
+__dtc_excusdnoov_post_right_pixel
+			bitb	#$F0			; test left pixel
+			bne	__dtc_excusdnoov_post_left_pixel
+			ora	#$F0			; lhs mask lets bg through
+__dtc_excusdnoov_post_left_pixel
+			anda	,x			; merge mask with bg
+			sta	,x			; write mask
+			orb	,x			; merge pixel with masked bg
+__dtc_excusdnoov_write_byte
+			stb	,x			; write merged pixel
+			puls	a
+__dtc_excusdnoov_dl_0
+			leax	1,x			; move to next dest byte
+			lbsr	dtc_adjust_src_fwd	; ensure u is within range
+			deca				; decrease byte count
+			bne	__dtc_excusdnoov_draw_line	; loop for new byte
+
+			lda	_ter_drw_x_skip_right
+			leau	a,u			; skip bytes to the right
+			inc	_ter_drw_y_loc		; point at next line	
+
+			lda	_ter_width
+			lsla				; multiply reverse skip by two
+							; so we're moving back two lines
+							; (just drawn line, plus next line to draw)
+			nega				; make it negative
+			leau	a,u			; move src pointer
+
+			dec	_ter_drw_lines_left
+			bne	__dtc_excusdnoov_new_row
+
+			rts
+;** end dtc_execute_combined_upsidedown_nooverlap_mode
+
+;** dtc_execute_offset_combined_upsidedown_nooverlap_mode
+; OFFSET VARIETY
+; This subroutine handles drawing a terrain chunk with upsidedown and nooverlap special modes
+; If the destination half-byte is zero, the half-byte from src will be written
+dtc_execute_offset_combined_upsidedown_nooverlap_mode
+			dec	_ter_drw_x_skip_left	; OFFSET MODE
+			lda	_ter_width		; number of bytes to draw
+			suba	_ter_drw_x_skip_left	; skip bytes to the left
+			suba	_ter_drw_x_skip_right	; skip bytes to the right
+			sta	_ter_drw_counter	; draw this many bytes per line
+
+			lda	_ter_drw_lines_left	; number of lines to draw
+			suba	_ter_drw_y_skip_top	; skip lines to the top
+			suba	_ter_drw_y_skip_bottom	; skip lines to the bottom
+			sta	_ter_drw_lines_left
+
+			ldu	_ter_offset		; point u at data
+
+			;** Set u to point at last line of src data
+			lda	_ter_height
+			suba	_ter_drw_y_skip_top	; we're skipping this many lines, so
+							; don't include them in the fast-forward
+			deca				; move to start of last line, not past it
+
+			ldb	_ter_width
+			mul				; d = total bytes to skip
+			leau	d,u			; u points to first byte of last line
+
+
+			;lbsr	dtc_skip_top_crop_lines	; adjust src as needed
+__dtc_oexcusdnoov_new_row
+			;** Remap destination pages
+			lda	_ter_drw_y_loc		; y pos to draw at
+			lbsr	get_addr_start_of_line	; convert a into d and remap
+
+			ldx	_ter_drw_x_loc		; get x offset
+			leax	d,x			; add vert and horiz offsets
+			;** X now = Destination Byte
+
+			lda	_ter_drw_x_skip_left
+			leau	a,u			; push src forward if needed
+
+			;** Remap source pages
+			lbsr	dtc_adjust_src_fwd	; ensure u is mapped
+
+			;** Final preparations
+			lda	_ter_drw_counter	; number of bytes to draw
+__dtc_oexcusdnoov_draw_line
+			pshs	a			; save the byte count
+			ldd	,u+			; get source byte and shifties
+			tst	_ter_drw_tmp
+			bne	__dtc_oexcusdnoov_dl_skip_first_byte_adjust
+			clra
+			dec	_ter_drw_tmp
+__dtc_oexcusdnoov_dl_skip_first_byte_adjust
+			lsra
+			rorb
+			lsra
+			rorb
+			lsra
+			rorb
+			lsra
+			rorb
+
+			lda	,s
+			deca
+			bne	__dtc_oexcusdnoov_dl_skip_last_byte_adjust
+			andb	#$F0
+__dtc_oexcusdnoov_dl_skip_last_byte_adjust
+			tstb
+			beq	__dtc_oexcusdnoov_dl_0	; don't write if zero
+
+			;** Check Destination byte, and mask as appropriate
+			lda	,x			; get background byte
+			beq	__dtc_oexcusdnoov_write_byte	; if background empty, just write
+			bita	#$0F			; check bg rhs pixel
+			beq	__dtc_oexcusdnoov_post_bg_right_pixel	; empty = no change
+			andb	#$F0			; clear rhs pixel
+__dtc_oexcusdnoov_post_bg_right_pixel
+			bita	#$F0			; check bg lhs pixel
+			beq	__dtc_oexcusdnoov_post_bg_left_pixel		; empty = no change
+			andb	#$0F			; clear lhs pixel
+__dtc_oexcusdnoov_post_bg_left_pixel
+			
+			;** Mask terrain byte
+
+			clra
+			bitb	#$0F			; test right pixel
+			bne	__dtc_oexcusdnoov_post_right_pixel
+			ora	#$0F			; rhs mask lets bg through
+__dtc_oexcusdnoov_post_right_pixel
+			bitb	#$F0			; test left pixel
+			bne	__dtc_oexcusdnoov_post_left_pixel
+			ora	#$F0			; lhs mask lets bg through
+__dtc_oexcusdnoov_post_left_pixel
+			anda	,x			; merge mask with bg
+			sta	,x			; write mask
+			orb	,x			; merge pixel with masked bg
+__dtc_oexcusdnoov_write_byte
+			stb	,x			; write merged pixel
+__dtc_oexcusdnoov_dl_0
+			puls	a
+			leax	1,x			; move to next dest byte
+			lbsr	dtc_adjust_src_fwd	; ensure u is within range
+			deca				; decrease byte count
+			bne	__dtc_oexcusdnoov_draw_line	; loop for new byte
+
+			lda	_ter_drw_x_skip_right
+			leau	a,u			; skip bytes to the right
+			inc	_ter_drw_y_loc		; point at next line	
+
+			lda	_ter_width
+			lsla				; multiply reverse skip by two
+							; so we're moving back two lines
+							; (just drawn line, plus next line to draw)
+			nega				; make it negative
+			leau	a,u			; move src pointer
+
+			dec	_ter_drw_lines_left
+			bne	__dtc_oexcusdnoov_new_row
+
+			rts
+;** end dtc_execute_combined_upsidedown_nooverlap_mode
 
 ;** dtc_execute_combined_upsidedown_black_mode
 ; This subroutine handles drawing a terrain chunk with upsidedown special flag
