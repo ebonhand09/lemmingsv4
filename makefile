@@ -33,7 +33,7 @@ terrain_1_objs := ter_1_00.dat ter_1_01.dat ter_1_02.dat ter_1_03.dat ter_1_04.d
 	ter_1_55.dat ter_1_56.dat ter_1_57.dat ter_1_58.dat ter_1_59.dat ter_1_60.dat ter_1_61.dat \
 	ter_1_62.dat ter_1_63.dat
 
-level_srcs := 0211.dat
+level_srcs := 0323.dat
 
 level_objs := $(level_srcs:%.dat=%.lvl)
 

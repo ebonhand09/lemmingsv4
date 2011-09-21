@@ -144,6 +144,11 @@ for ($chunk_index = 0; $chunk_index < $number_of_chunks; $chunk_index++)
 	$chunks[$chunk_index]['left'] = $least_left;
 	$chunks[$chunk_index]['right'] = $most_right+1;
 }
+
+//$adj_handle = fopen($adjustment_file, 'wb');
+$adj_text = "<" . "?php /* Adjustments for Terrain Set $tileset */" . PHP_EOL;
+$adj_text .= "\$adjustment = array();\n";
+
 $counter = 0;
 echo ";; Terrain Lookup Table" . PHP_EOL;
 foreach ($chunks as $index => $chunk)
@@ -175,6 +180,7 @@ foreach ($chunks as $index => $chunk)
 	echo sprintf("\t\t\t\t\tFCB\t%02s,%02s\n", $total_bytes, $chunk['def']['height_px']);
 	$counter += $total_size;
 
+	$adj_text .= sprintf("\$adjustment[%s] = %s;\n", $index, $chunk['left']);
 }
 
-
+file_put_contents($adjustment_file, $adj_text);

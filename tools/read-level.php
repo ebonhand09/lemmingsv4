@@ -222,6 +222,14 @@
   echo PHP_EOL;
   echo "Stats" . PHP_EOL;
   echo "-----" . PHP_EOL;
+  echo "Graphic Set: " . $level->graphicSet . PHP_EOL;
+
+  include('/home/david/projects/lemmings/resources/terrain-adjustment'.$level->graphicSet.'.php');
+$adjustments_found = (isset($adjustment)) ? true : false;
+  echo "Terrain Adjustments found: ";
+  echo ($adjustments_found) ? 'Yes' : 'No';
+  echo PHP_EOL;
+
   echo "Level name: " . $level->title . PHP_EOL;
   echo "Total Objects: " . $level->totalObjects . PHP_EOL;
   echo "Total Terrain: " . $level->totalTerrain . PHP_EOL;
@@ -296,8 +304,9 @@
 	// WRITE OUT TERRAIN
 	foreach($level->terrainArray as $key => $val)
 	{
+		$x_adjust = (isset($adjustment[$val->id])) ? $adjustment[$val->id] : 0;
 		writeData($val->id);
-		writeData($val->x_offset,2);
+		writeData($val->x_offset+$x_adjust,2);
 		writeData($val->y_offset);
 		//writeData($val->notOverlap);
 		//writeData($val->black);
