@@ -80,6 +80,7 @@ loader_stage2.rawbin lemmings.map
 	rm -f bin/gfx/*.bin
 	rm -f bin/lvl/*.lvl
 	rm -f include/terrain-offset-table.asm
+	rm -f resources/*.php
 
 %.o: %.asm
 	$(LWASM) $(LWASM_OPTS) --list=$*.list --symbols --format=obj -o $@ $<
