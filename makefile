@@ -33,7 +33,7 @@ terrain_1_objs := ter_1_00.dat ter_1_01.dat ter_1_02.dat ter_1_03.dat ter_1_04.d
 	ter_1_55.dat ter_1_56.dat ter_1_57.dat ter_1_58.dat ter_1_59.dat ter_1_60.dat ter_1_61.dat \
 	ter_1_62.dat ter_1_63.dat
 
-level_srcs := 0323.dat
+level_srcs := 0206.dat
 
 level_objs := $(level_srcs:%.dat=%.lvl)
 
@@ -56,8 +56,8 @@ lemmings_objs := $(lemmings_srcs:%.asm=%.o)
 all_objs := $(lemmings_objs) $(extra_srcs:%.asm=%.o)
 
 #src/payload.asm: $(terrain_0_objs) $(level_objs)
-#src/payload.asm: include/terrain-offset-table.asm bin/gfx/terrain0.bin $(level_objs)
-src/payload.asm: include/terrain-offset-table.asm bin/gfx/terrain1.bin $(level_objs)
+src/payload.asm: include/terrain-offset-table.asm bin/gfx/terrain0.bin $(level_objs)
+#src/payload.asm: include/terrain-offset-table.asm bin/gfx/terrain1.bin $(level_objs)
 
 lemmings.bin: $(lemmings_objs) $(lemmings_linkscript)
 	$(LWLINK) --format=decb --map=lemmings.map --script=$(lemmings_linkscript) -o $@ $(lemmings_objs)
@@ -97,6 +97,9 @@ bin/lvl/%.lvl: $(level_srcs) tools/read-level.php
 include/terrain-offset-table.asm: 
 	tools/extract-terrain.php > $@
 	
+bin/gfx/terrain0.bin: $(terrain_0_objs)
+	cat $^ > $@
+
 bin/gfx/terrain1.bin: $(terrain_1_objs)
 	cat $^ > $@
 

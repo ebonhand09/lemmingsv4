@@ -1,5 +1,6 @@
 ;** Interrupt handling routines
 			INCLUDE	"defines.asm"
+			INCLUDE "keyboard-definitions.asm"
 			
 			SECTION .bss,bss
 _ih_counter		RMB	1
@@ -41,12 +42,48 @@ interrupt_handler
 			ldb	_alt_vid_draw_block
 			sta	_alt_vid_draw_block
 			stb	_cur_vid_draw_block
+			ldx	_cur_x_scroll_loc
+			ldy	_alt_x_scroll_loc
+			stx	_alt_x_scroll_loc
+			sty	_cur_x_scroll_loc
 			lda	_cur_vid_show_loc
 			ldb	_alt_vid_show_loc
 			sta	_alt_vid_show_loc
 			stb	_cur_vid_show_loc
 			stb	GIME.VOFFSET
 			inc	_ih_counter
+
+			;**	Read Keyboard for scroll
+			;**	Checks to see if A or D is pressed, and if so
+			;**	Updates the 'target location' variable
+			lda	#KB_Row_A
+			sta	PIA0.DB			; Check for 'A'
+			lda	PIA0.DA			
+			bita	#KB_Bit_A
+			bne	@_a_not_pressed
+			ldx	_target_scroll_loc
+			leax	-2,x
+			stx	_target_scroll_loc
+@_a_not_pressed
+			lda	#KB_Row_D
+			sta	PIA0.DB
+			lda	PIA0.DA
+			bita	#KB_Bit_D
+			bne	@_d_not_pressed
+			ldx	_target_scroll_loc
+			leax	2,x
+			stx	_target_scroll_loc
+@_d_not_pressed
+			cmpx	#0
+			bhi	@_skip_loc_clamp_left
+			ldx	#0
+@_skip_loc_clamp_left
+			cmpx	#639
+			blo	@_skip_loc_clamp_right
+			ldx	#639
+@_skip_loc_clamp_right
+
+
 			lda	GIME.IRQ
 			rti			
 

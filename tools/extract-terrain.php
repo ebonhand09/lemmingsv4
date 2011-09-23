@@ -49,7 +49,7 @@ function writeString($data, $bytes, $handle = NULL)
 
 
 
-$tileset = ($argc > 1) ? $argv[1] : 1;
+$tileset = ($argc > 1) ? $argv[1] : 0;
 $ground_file = "/home/david/projects/lemmings/resources/dat/ground".$tileset.".dat";
 $terrain_file = "/home/david/projects/lemmings/resources/dat/terrain".$tileset.".dat";
 $adjustment_file = "/home/david/projects/lemmings/resources/terrain-adjustment".$tileset.".php";

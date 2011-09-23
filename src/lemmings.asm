@@ -10,11 +10,17 @@ _cur_vid_draw_block	EXPORT
 _alt_vid_draw_block	EXPORT
 _cur_vid_show_loc	EXPORT
 _alt_vid_show_loc	EXPORT
+_target_scroll_loc	EXPORT
+_cur_x_scroll_loc	EXPORT
+_alt_x_scroll_loc	EXPORT
 _cur_vid_draw_block	RMB	1
 _alt_vid_draw_block	RMB	1
 _cur_vid_show_loc	RMB	2
 _alt_vid_show_loc	RMB	2
 _pc_start_loc		RMB	2
+_cur_x_scroll_loc	RMB	2
+_alt_x_scroll_loc	RMB	2
+_target_scroll_loc	RMB	2
 			ENDSECTION
 
 			SECTION program_code
@@ -109,24 +115,22 @@ _nlc_level_complete
 			lbsr	setup_interrupts	; Get things organised
 
 			ldx	_pc_start_loc		; offset to view
-			ldx	#0
+			stx	_cur_x_scroll_loc	; update current page
+			stx	_alt_x_scroll_loc	; update alternate page
+			stx	_target_scroll_loc	; we're already here, don't scroll
+			lbsr	copy_virt_to_phys
+			cwai	#$EF
+			lbsr	copy_virt_to_phys
 			
 @_do_loop
-			cwai	#$EF	
-			pshs	x
+			cwai	#$EF			; Execute interrupt first
+			ldx	_target_scroll_loc	; this is where we want to go
+			cmpx	_cur_x_scroll_loc	; this is where we are now
+			beq	@_no_scroll		; if same, no scroll needed, so jump it
 			lbsr	copy_virt_to_phys	; render it to gfx
-			puls	x
-			leax	2,x
-			cmpx	#640
-			blo	@_do_loop
-@_do_other_loop
-			cwai	#$EF	
-			pshs	x
-			lbsr	copy_virt_to_phys	; render it to gfx
-			puls	x
-			leax	-2,x
-			cmpx	#0
-			bhi	@_do_other_loop
+			ldx	_target_scroll_loc
+			stx	_cur_x_scroll_loc
+@_no_scroll
 			jmp	@_do_loop
 
 ENDLOOP			jmp	ENDLOOP
