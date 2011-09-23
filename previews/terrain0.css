@@ -1,16 +1,17 @@
 td.color-0 { background-color: #000000; }
-td.color-1 { background-color: #FFFFFF; }
+td.color-1 { background-color: #000055; }
 td.color-2 { background-color: #00AA00; }
-td.color-3 { background-color: #5555FF; }
-td.color-4 { background-color: #FF5555; }
-td.color-5 { background-color: #FFFF55; }
+td.color-3 { background-color: #FFFFFF; }
+td.color-4 { background-color: #FFFF00; }
+td.color-5 { background-color: #FF0000; }
 td.color-6 { background-color: #AAAAAA; }
-td.color-7 { background-color: #AAFF00; }
-td.color-8 { background-color: #FFAA00; }
-td.color-9 { background-color: #AA5500; }
-td.color-10 { background-color: #AA0000; }
-td.color-11 { background-color: #550000; }
-td.color-12 { background-color: #555555; }
-td.color-13 { background-color: #AA55AA; }
-td.color-14 { background-color: #55AA00; }
-td.color-15 { background-color: #005500; }
+td.color-7 { background-color: #FFAA00; }	/* duplicate of color-8*/
+/* Start Terrain Specific Colors */		/* EGA below */
+td.color-8 { background-color: #FFAA00; }	/* 38dec / 0x26 */ 
+td.color-9 { background-color: #AA5500; }	/* 20dec / 0x14 */
+td.color-10 { background-color: #AA0000; }	/* 04dec / 0x04 */
+td.color-11 { background-color: #550000; }	/* 32dec / 0x20 */
+td.color-12 { background-color: #555555; }	/* 56dec / 0x38 */
+td.color-13 { background-color: #AA55AA; }	/* 21dec / 0x15 */
+td.color-14 { background-color: #55AA00; }	/* 34dec / 0x22 light grass*/
+td.color-15 { background-color: #005500; }	/* 16dec / 0x10 dark grass */

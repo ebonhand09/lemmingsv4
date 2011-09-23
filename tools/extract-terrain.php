@@ -47,12 +47,14 @@ function writeString($data, $bytes, $handle = NULL)
 	fwrite($handle, $data, $bytes);
 }
 
-$tileset = 1;
+
+
+$tileset = ($argc > 1) ? $argv[1] : 1;
 $ground_file = "/home/david/projects/lemmings/resources/dat/ground".$tileset.".dat";
 $terrain_file = "/home/david/projects/lemmings/resources/dat/terrain".$tileset.".dat";
 $adjustment_file = "/home/david/projects/lemmings/resources/terrain-adjustment".$tileset.".php";
 $output_dir = "/home/david/projects/lemmings/bin/gfx/extracted_terrain/";
-$lookup_table = "/home/david/projects/lemmings/include/terrain-offset-table.asm";
+$lookup_table = "/home/david/projects/lemmings/include/terrain-offset-table".$tileset.".asm";
 
 $number_of_chunks = 64;
 
